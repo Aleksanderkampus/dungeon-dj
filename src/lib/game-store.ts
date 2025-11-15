@@ -1,7 +1,26 @@
 import { Game, Player } from "@/types/game";
 
+// Preserve game store across HMR in development
+const globalForGameStore = globalThis as unknown as {
+  gameStoreMap: Map<string, Game> | undefined;
+};
+
 class GameStore {
-  private games: Map<string, Game> = new Map();
+  private games: Map<string, Game>;
+
+  constructor() {
+    // Reuse existing map in development to survive HMR
+    if (process.env.NODE_ENV === "development" && globalForGameStore.gameStoreMap) {
+      this.games = globalForGameStore.gameStoreMap;
+      console.log("[GameStore] Reusing existing store with", this.games.size, "games");
+    } else {
+      this.games = new Map();
+      console.log("[GameStore] Created new store");
+      if (process.env.NODE_ENV === "development") {
+        globalForGameStore.gameStoreMap = this.games;
+      }
+    }
+  }
 
   generateRoomCode(): string {
     // Generate 6-character alphanumeric code
@@ -30,11 +49,13 @@ class GameStore {
       createdAt: new Date(),
     };
 
+    console.log("Creating game:", game);
     this.games.set(roomCode, game);
     return game;
   }
 
   getGame(roomCode: string): Game | undefined {
+    console.log("Getting game for room code:", roomCode, this.games);
     return this.games.get(roomCode);
   }
 
@@ -44,10 +65,15 @@ class GameStore {
 
     game.players.push(player);
     this.games.set(roomCode, game);
+    console.log("Adding player to game:", roomCode, game);
     return game;
   }
 
-  updatePlayerReady(roomCode: string, playerId: string, isReady: boolean): Game | null {
+  updatePlayerReady(
+    roomCode: string,
+    playerId: string,
+    isReady: boolean
+  ): Game | null {
     const game = this.games.get(roomCode);
     if (!game) return null;
 
