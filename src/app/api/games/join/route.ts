@@ -37,7 +37,10 @@ export async function POST(req: NextRequest) {
       id: playerId,
       characterName,
       isReady: false,
+      isHost: false,
       ...character,
+      characterBackground,
+      characterGenerationStatus: "idle" as const,
     };
 
     gameStore.addPlayer(roomCode.toUpperCase(), player);
