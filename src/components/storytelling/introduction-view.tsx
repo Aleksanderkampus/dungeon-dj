@@ -38,10 +38,23 @@ export function IntroductionView({ roomCode }: IntroductionViewProps) {
     setIsMuted(!isMuted);
   };
 
-  // Get all sentences up to current index for display
-  const displayedText = mockSentences
-    .slice(0, currentSentenceIndex + 1)
-    .join(" ");
+  // Auto-advance to next sentence with timing
+  React.useEffect(() => {
+    if (!isPlaying) return;
+
+    // Check if we've displayed all sentences
+    if (currentSentenceIndex >= mockSentences.length - 1) {
+      setIsPlaying(false);
+      return;
+    }
+
+    // Mock timing: 3 seconds per sentence (will be replaced with audio duration)
+    const timer = setTimeout(() => {
+      setCurrentSentenceIndex(prev => prev + 1);
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, [isPlaying, currentSentenceIndex, mockSentences.length]);
 
   return (
     <div className="container mx-auto max-w-4xl space-y-6 p-4">
@@ -51,15 +64,24 @@ export function IntroductionView({ roomCode }: IntroductionViewProps) {
             <h2 className="mb-4 text-2xl font-bold">Introduction</h2>
 
             {/* Story text display */}
-            <div className="min-h-[200px] text-lg leading-relaxed">
+            <div className="min-h-[200px] space-y-2 text-lg leading-relaxed">
               {currentSentenceIndex === -1 ? (
                 <p className="text-muted-foreground italic">
                   Press start to begin the adventure...
                 </p>
               ) : (
-                <p className="animate-in fade-in duration-500">
-                  {displayedText}
-                </p>
+                mockSentences.slice(0, currentSentenceIndex + 1).map((sentence, idx) => (
+                  <span
+                    key={idx}
+                    className={
+                      idx === currentSentenceIndex
+                        ? "animate-in fade-in duration-300 font-medium"
+                        : "text-muted-foreground"
+                    }
+                  >
+                    {sentence}{" "}
+                  </span>
+                ))
               )}
             </div>
           </div>
