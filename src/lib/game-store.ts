@@ -81,6 +81,16 @@ class GameStore {
     return game;
   }
 
+  async updateGameState(
+    roomCode: string,
+    gameState: Game["gameState"]
+  ): Promise<void> {
+    const { error } = await supabase
+      .from("games")
+      .update({ game_state: gameState })
+      .eq("room_code", roomCode);
+  }
+
   async addStoryAndMapToGame(
     roomCode: string,
     aiGeneratedGame: AIGeneratedGame
