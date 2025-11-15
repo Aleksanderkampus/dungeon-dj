@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { gameStore } from "@/lib/game-store";
 import { Game } from "@/types/game";
-import { nanoid } from "nanoid";
 
 export async function POST(req: NextRequest) {
   try {
@@ -15,26 +14,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Generate host ID (in real app, use authenticated user ID)
-    const hostId = nanoid();
-
     // Create game
-    const game = gameStore.createGame(hostId, worldData);
-
-    // Add host as first player
-    gameStore.addPlayer(game.roomCode, {
-      id: hostId,
-      characterName: "Game Master",
-      isReady: false,
-      isHost: true,
-    });
+    const game = gameStore.createGame(worldData);
 
     // Trigger n8n story generation (async)
     //triggerStoryGeneration(game);
 
     return NextResponse.json({
       roomCode: game.roomCode,
-      hostId,
     });
   } catch (error) {
     console.error("Error creating game:", error);

@@ -9,7 +9,6 @@ export type GameStatus = "generating" | "ready" | "in-progress" | "completed";
 
 export type Game = {
   roomCode: string;
-  hostId: string;
   players: Player[];
   status: GameStatus;
   worldData: {
