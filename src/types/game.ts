@@ -16,7 +16,12 @@ export type Player = {
   generated_voice_id?: string;
 };
 
-export type GameStatus = "generating" | "ready" | "in-progress" | "completed";
+export type GameStatus =
+  | "generating"
+  | "ready"
+  | "in-progress"
+  | "completed"
+  | "error";
 
 export type Game = {
   roomCode: string;
@@ -26,7 +31,7 @@ export type Game = {
     genre: string;
     teamBackground: string;
     storyGoal: string;
-    storyDescription: string;
+    storyIdea: string;
     facilitatorPersona: string;
     facilitatorVoice: string;
     actionsPerSession: string;

@@ -12,7 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { PlayerList } from "./player-list";
-import { Loader2, Copy, CheckCircle2 } from "lucide-react";
+import { Loader2, Copy, CheckCircle2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
 type LobbyViewProps = {
@@ -50,9 +50,14 @@ async function toggleReady(params: {
   return response.json();
 }
 
-export function LobbyView({ initialGame, playerId: initialPlayerId }: LobbyViewProps) {
+export function LobbyView({
+  initialGame,
+  playerId: initialPlayerId,
+}: LobbyViewProps) {
   const [copied, setCopied] = React.useState(false);
-  const [playerId, setPlayerId] = React.useState<string | null>(initialPlayerId);
+  const [playerId, setPlayerId] = React.useState<string | null>(
+    initialPlayerId
+  );
   const queryClient = useQueryClient();
   const roomCode = initialGame.roomCode;
 
@@ -83,7 +88,9 @@ export function LobbyView({ initialGame, playerId: initialPlayerId }: LobbyViewP
         return {
           ...old,
           players: old.players.map((p) =>
-            p.id === variables.playerId ? { ...p, isReady: variables.isReady } : p
+            p.id === variables.playerId
+              ? { ...p, isReady: variables.isReady }
+              : p
           ),
         };
       });
@@ -152,11 +159,7 @@ export function LobbyView({ initialGame, playerId: initialPlayerId }: LobbyViewP
                 {game.roomCode}
               </span>
             </div>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={handleCopyRoomCode}
-            >
+            <Button variant="outline" size="icon" onClick={handleCopyRoomCode}>
               {copied ? (
                 <CheckCircle2 className="h-4 w-4" />
               ) : (
@@ -190,6 +193,22 @@ export function LobbyView({ initialGame, playerId: initialPlayerId }: LobbyViewP
               <p className="font-medium text-green-600">Story ready!</p>
               <p className="text-sm text-muted-foreground">
                 Your adventure has been generated and is ready to begin.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {game.status === "error" && (
+        <Card className="border-red-600">
+          <CardContent className="flex items-center gap-3 py-4">
+            <AlertCircle className="h-5 w-5 text-red-600" />
+            <div>
+              <p className="font-medium text-red-600">
+                Story generation failed
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Please try again later.
               </p>
             </div>
           </CardContent>
