@@ -1,4 +1,10 @@
-import { AIGeneratedGame, Game, Player } from "@/types/game";
+import {
+  CharacterGenerationStatus,
+  CharacterSheet,
+  Game,
+  Player,
+  AIGeneratedGame
+} from "@/types/game";
 import { supabase } from "../lib/services/supabase";
 
 // Preserve game store across HMR in development
@@ -113,7 +119,12 @@ class GameStore {
     const game = this.games.get(roomCode);
     if (!game) return null;
 
-    // game.players.push(player);
+    const normalizedPlayer: Player = {
+      ...player,
+      characterGenerationStatus: player.characterGenerationStatus ?? "idle",
+    };
+
+    game.players.push(normalizedPlayer);
     this.games.set(roomCode, game);
     return game;
   }
@@ -164,6 +175,59 @@ class GameStore {
 
   deleteGame(roomCode: string): boolean {
     return this.games.delete(roomCode);
+  }
+
+  updatePlayerBackground(
+    roomCode: string,
+    playerId: string,
+    background: string
+  ): Game | null {
+    return this.updatePlayerState(roomCode, playerId, (player) => {
+      player.characterBackground = background;
+    });
+  }
+
+  updatePlayerCharacterStatus(
+    roomCode: string,
+    playerId: string,
+    status: CharacterGenerationStatus,
+    error?: string
+  ): Game | null {
+    return this.updatePlayerState(roomCode, playerId, (player) => {
+      player.characterGenerationStatus = status;
+      player.characterGenerationError = error;
+      if (status !== "error") {
+        player.characterGenerationError = undefined;
+      }
+    });
+  }
+
+  setPlayerCharacterSheet(
+    roomCode: string,
+    playerId: string,
+    sheet: CharacterSheet
+  ): Game | null {
+    return this.updatePlayerState(roomCode, playerId, (player) => {
+      player.characterSheet = sheet;
+      player.characterGenerationStatus = "ready";
+      player.characterGenerationError = undefined;
+    });
+  }
+
+  private updatePlayerState(
+    roomCode: string,
+    playerId: string,
+    updater: (player: Player) => void
+  ): Game | null {
+    const game = this.games.get(roomCode);
+    if (!game) return null;
+
+    const player = game.players.find((p) => p.id === playerId);
+    if (!player) return null;
+
+    updater(player);
+    this.games.set(roomCode, game);
+    return game;
   }
 }
 

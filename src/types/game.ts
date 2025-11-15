@@ -1,9 +1,39 @@
 import { Static, Type } from "@sinclair/typebox";
+export type CharacterGenerationStatus =
+  | "idle"
+  | "generating"
+  | "ready"
+  | "error";
+
+export type AbilityScores = {
+  strength: number;
+  dexterity: number;
+  constitution: number;
+  intelligence: number;
+  wisdom: number;
+  charisma: number;
+};
+
+export type CharacterSheet = {
+  name: string;
+  ancestry: string;
+  characterClass: string;
+  level: number;
+  alignment: string;
+  backgroundSummary: string;
+  abilityScores: AbilityScores;
+  combatStyle: string;
+  skills: string[];
+  equipment: string[];
+  personalityTraits: string[];
+  specialAbilities: string[];
+};
 
 export type Player = {
   id: string;
   characterName: string;
   isReady: boolean;
+  isHost: boolean;
   race?: string;
   class?: string;
   skills?: string[];
@@ -16,6 +46,10 @@ export type Player = {
   wisdom?: number;
   charisma?: number;
   generated_voice_id?: string;
+  characterBackground?: string;
+  characterGenerationStatus?: CharacterGenerationStatus;
+  characterGenerationError?: string;
+  characterSheet?: CharacterSheet;
 };
 
 export type GameStatus =

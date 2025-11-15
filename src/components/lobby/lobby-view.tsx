@@ -12,6 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { PlayerList } from "./player-list";
+import { CharacterCreationPanel } from "./character-creation-panel";
 import { Loader2, Copy, CheckCircle2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
@@ -218,8 +219,13 @@ export function LobbyView({
       {/* Player List */}
       <PlayerList players={game.players} />
 
-      {/* Ready Button */}
+      {/* Character Creation */}
       {playerId && currentPlayer && (
+        <CharacterCreationPanel player={currentPlayer} roomCode={roomCode} />
+      )}
+
+      {/* Ready Button */}
+      {playerId && currentPlayer && !currentPlayer.isHost && (
         <div className="flex justify-center">
           <Button
             size="lg"
