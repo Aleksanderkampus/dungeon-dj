@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { gameStore } from "@/lib/game-store";
 import { nanoid } from "nanoid";
+import { Game } from "@/types/game";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { roomCode, characterName } = body;
+    const { roomCode, characterName, characterBackground } = body;
 
     if (!roomCode || !characterName) {
       return NextResponse.json(
@@ -16,20 +17,15 @@ export async function POST(req: NextRequest) {
 
     const game = gameStore.getGame(roomCode.toUpperCase());
     if (!game) {
-      return NextResponse.json(
-        { error: "Game not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Game not found" }, { status: 404 });
     }
 
-    // Check if character name is already taken
-    const nameTaken = game.players.some(
-      (p) => p.characterName.toLowerCase() === characterName.toLowerCase()
-    );
-    if (nameTaken) {
+    // Make a call to the n8n webhook to generate a character
+    const character = await generateCharacter(characterBackground, roomCode);
+    if (!character) {
       return NextResponse.json(
-        { error: "Character name already taken" },
-        { status: 409 }
+        { error: "Failed to generate character" },
+        { status: 500 }
       );
     }
 
@@ -41,7 +37,7 @@ export async function POST(req: NextRequest) {
       id: playerId,
       characterName,
       isReady: false,
-      isHost: false,
+      ...character,
     };
 
     gameStore.addPlayer(roomCode.toUpperCase(), player);
@@ -49,9 +45,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ playerId });
   } catch (error) {
     console.error("Error joining game:", error);
-    return NextResponse.json(
-      { error: "Failed to join game" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to join game" }, { status: 500 });
   }
+}
+
+async function generateCharacter(
+  characterBackground: string,
+  gameId: Game["roomCode"]
+) {
+  const response = await fetch(process.env.N8N_CHARACTER_WEBHOOK || "", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ characterBackground, gameId }),
+  });
+  return response.json();
 }

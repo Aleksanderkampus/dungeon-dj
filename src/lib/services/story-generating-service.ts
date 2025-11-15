@@ -1,8 +1,9 @@
+"use server";
+
 import OpenAI from "openai";
-import dotenv from "dotenv";
 import { AIGeneratedGame, Game, RoomPlanSchema } from "@/types/game";
-import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 import "dotenv/config";
+import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 
 import {
   assembleStorySystemPrompt,
@@ -16,8 +17,6 @@ import {
   assembleNarratorSystemVoicePrompt,
   assembleNarratorUserVoicePrompt,
 } from "../prompts/narrator-voice-prompts";
-
-dotenv.config();
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
