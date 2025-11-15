@@ -2,6 +2,8 @@
 
 import * as React from "react";
 import { useForm } from "@tanstack/react-form";
+import { useMutation } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import * as z from "zod";
 
@@ -78,8 +80,43 @@ const STEPS = [
   },
 ];
 
+async function createGame(worldData: unknown) {
+  const response = await fetch("/api/games/create", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ worldData }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to create game");
+  }
+
+  return response.json();
+}
+
 export function WorldGenerationForm() {
   const [currentStep, setCurrentStep] = React.useState(1);
+  const router = useRouter();
+
+  // Add create game mutation
+  const createGameMutation = useMutation({
+    mutationFn: createGame,
+    onSuccess: (data) => {
+      const { roomCode, hostId } = data;
+
+      // Store host ID
+      sessionStorage.setItem("playerId", hostId);
+      sessionStorage.setItem("roomCode", roomCode);
+
+      toast.success("Game created successfully!");
+      router.push(`/lobby/${roomCode}`);
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to create game. Please try again.");
+      console.error(error);
+    },
+  });
 
   // Map steps to field names
   const stepFieldMap: Record<number, keyof typeof formSchema.shape> = {
@@ -107,7 +144,7 @@ export function WorldGenerationForm() {
       onSubmit: formSchema,
     },
     onSubmit: async ({ value }) => {
-      toast.success("World Generated Successfully!");
+      createGameMutation.mutate(value);
     },
   });
 
@@ -462,8 +499,12 @@ export function WorldGenerationForm() {
                 Reset
               </Button>
               {currentStep === STEPS.length ? (
-                <Button type="submit" form="world-generation-form">
-                  Submit
+                <Button
+                  type="submit"
+                  form="world-generation-form"
+                  disabled={createGameMutation.isPending}
+                >
+                  {createGameMutation.isPending ? "Creating..." : "Submit"}
                 </Button>
               ) : (
                 <Button type="button" onClick={handleNext}>
