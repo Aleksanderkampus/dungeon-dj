@@ -2,143 +2,15 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Build a multiplayer game system where users can create games via WorldGenerationForm, generate unique room codes, and allow other players to join lobbies with character names and ready status, all synchronized in real-time via WebSockets.
+**Goal:** Build a multiplayer game system where users can create games via WorldGenerationForm, generate unique room codes, and allow other players to join lobbies with character names and ready status, all synchronized in real-time via React Query polling.
 
-**Architecture:** Next.js App Router with API routes for game management, Socket.io for real-time lobby updates, TanStack React Query for server state management with optimistic updates, in-memory storage for game state (Map-based), and n8n webhook integration for story generation. TanStack Form for all form handling with Zod validation.
+**Architecture:** Next.js App Router with API routes for game management, TanStack React Query for server state management with polling for real-time updates and optimistic updates, in-memory storage for game state (Map-based), and n8n webhook integration for story generation. TanStack Form for all form handling with Zod validation.
 
-**Tech Stack:** Next.js 16, Socket.io (WebSockets), TanStack React Query v5, TanStack Form, Zod, Sonner (toasts), shadcn/ui components, in-memory Map storage
-
----
-
-## Task 1: Set up Socket.io infrastructure
-
-**Files:**
-- Create: `src/lib/socket-server.ts`
-- Create: `src/lib/socket-client.ts`
-- Create: `src/app/api/socket/route.ts`
-- Modify: `package.json`
-
-**Step 1: Install Socket.io dependencies**
-
-Run:
-```bash
-npm install socket.io socket.io-client
-npm install --save-dev @types/socket.io @types/socket.io-client
-```
-
-Expected: Dependencies installed successfully
-
-**Step 2: Create Socket.io server setup**
-
-Create: `src/lib/socket-server.ts`
-
-```typescript
-import { Server as NetServer } from "http";
-import { Server as SocketIOServer } from "socket.io";
-import { NextApiResponse } from "next";
-
-export type NextApiResponseServerIO = NextApiResponse & {
-  socket: {
-    server: NetServer & {
-      io?: SocketIOServer;
-    };
-  };
-};
-
-export function initSocketServer(httpServer: NetServer): SocketIOServer {
-  const io = new SocketIOServer(httpServer, {
-    path: "/api/socket",
-    cors: {
-      origin: "*",
-      methods: ["GET", "POST"],
-    },
-  });
-
-  io.on("connection", (socket) => {
-    console.log("Client connected:", socket.id);
-
-    socket.on("disconnect", () => {
-      console.log("Client disconnected:", socket.id);
-    });
-  });
-
-  return io;
-}
-```
-
-**Step 3: Create Socket.io client hook**
-
-Create: `src/lib/socket-client.ts`
-
-```typescript
-"use client";
-
-import { useEffect, useState } from "react";
-import { io, Socket } from "socket.io-client";
-
-let socket: Socket | null = null;
-
-export function useSocket() {
-  const [isConnected, setIsConnected] = useState(false);
-
-  useEffect(() => {
-    if (!socket) {
-      socket = io({
-        path: "/api/socket",
-      });
-
-      socket.on("connect", () => {
-        console.log("Socket connected");
-        setIsConnected(true);
-      });
-
-      socket.on("disconnect", () => {
-        console.log("Socket disconnected");
-        setIsConnected(false);
-      });
-    }
-
-    return () => {
-      // Don't disconnect on unmount, keep connection alive
-    };
-  }, []);
-
-  return { socket, isConnected };
-}
-```
-
-**Step 4: Create API route for Socket.io**
-
-Create: `src/app/api/socket/route.ts`
-
-```typescript
-import { NextRequest, NextResponse } from "next/server";
-
-export async function GET(req: NextRequest) {
-  // Socket.io will handle upgrade internally
-  return NextResponse.json({ message: "Socket.io server running" });
-}
-```
-
-**Step 5: Test Socket.io connection**
-
-Run dev server:
-```bash
-npm run dev
-```
-
-Expected: Server starts without errors. We'll test the actual connection in later tasks.
-
-**Step 6: Commit**
-
-```bash
-git add package.json package-lock.json src/lib/socket-server.ts src/lib/socket-client.ts src/app/api/socket/route.ts
-git commit -m "feat: add Socket.io infrastructure for real-time updates"
-```
+**Tech Stack:** Next.js 16, TanStack React Query v5 (with polling), TanStack Form, Zod, Sonner (toasts), shadcn/ui components, in-memory Map storage
 
 ---
 
-## Task 2: Create game state management
+## Task 1: Create game state management
 
 **Files:**
 - Create: `src/lib/game-store.ts`
@@ -297,7 +169,7 @@ git commit -m "feat: add game state management with in-memory store"
 
 ---
 
-## Task 3: Update home page with Create/Join buttons
+## Task 2: Update home page with Create/Join buttons
 
 **Files:**
 - Modify: `src/app/page.tsx`
@@ -367,7 +239,7 @@ git commit -m "feat: add Create/Join game buttons to home page"
 
 ---
 
-## Task 4: Set up TanStack React Query
+## Task 3: Set up TanStack React Query
 
 **Files:**
 - Create: `src/lib/query-client.ts`
@@ -504,7 +376,7 @@ git commit -m "feat: add TanStack React Query with provider setup"
 
 ---
 
-## Task 6: Create game creation page
+## Task 4: Create game creation page
 
 **Files:**
 - Create: `src/app/create-game/page.tsx`
@@ -630,7 +502,7 @@ git commit -m "feat: add create game page with form submission"
 
 ---
 
-## Task 7: Create game creation API endpoint
+## Task 5: Create game creation API endpoint
 
 **Files:**
 - Create: `src/app/api/games/create/route.ts`
@@ -752,7 +624,7 @@ git commit -m "feat: add game creation API endpoint with n8n integration"
 
 ---
 
-## Task 8: Create story callback API endpoint
+## Task 6: Create story callback API endpoint
 
 **Files:**
 - Create: `src/app/api/games/story-callback/route.ts`
@@ -787,9 +659,6 @@ export async function POST(req: NextRequest) {
 
     if (status === "success" && story) {
       gameStore.setGeneratedStory(roomCode, story);
-
-      // Emit socket event to notify lobby
-      // We'll implement socket emission in next task
 
       return NextResponse.json({ success: true });
     } else {
@@ -830,7 +699,7 @@ git commit -m "feat: add n8n story callback API endpoint"
 
 ---
 
-## Task 9: Create join game page with React Query
+## Task 7: Create join game page with React Query
 
 **Files:**
 - Create: `src/app/join-game/page.tsx`
@@ -1113,7 +982,7 @@ git commit -m "feat: add join game page with two-step form"
 
 ---
 
-## Task 10: Create game join and fetch API endpoints
+## Task 8: Create game join and fetch API endpoints
 
 **Files:**
 - Create: `src/app/api/games/join/route.ts`
@@ -1198,8 +1067,6 @@ export async function POST(req: NextRequest) {
 
     gameStore.addPlayer(roomCode.toUpperCase(), player);
 
-    // TODO: Emit socket event for player joined
-
     return NextResponse.json({ playerId });
   } catch (error) {
     console.error("Error joining game:", error);
@@ -1235,7 +1102,7 @@ git commit -m "feat: add game join and fetch API endpoints"
 
 ---
 
-## Task 11: Create lobby page with React Query and real-time updates
+## Task 9: Create lobby page with React Query and real-time updates
 
 **Files:**
 - Create: `src/app/lobby/[roomCode]/page.tsx`
@@ -1307,7 +1174,7 @@ export function PlayerList({ players }: PlayerListProps) {
 }
 ```
 
-**Step 2: Create lobby view component with React Query**
+**Step 2: Create lobby view component with React Query polling**
 
 Create: `src/components/lobby/lobby-view.tsx`
 
@@ -1315,7 +1182,6 @@ Create: `src/components/lobby/lobby-view.tsx`
 "use client";
 
 import * as React from "react";
-import { useSocket } from "@/lib/socket-client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Game } from "@/types/game";
 import { Button } from "@/components/ui/button";
@@ -1366,18 +1232,18 @@ async function toggleReady(params: {
 }
 
 export function LobbyView({ initialGame, playerId: initialPlayerId }: LobbyViewProps) {
-  const { socket, isConnected } = useSocket();
   const [copied, setCopied] = React.useState(false);
   const [playerId, setPlayerId] = React.useState<string | null>(initialPlayerId);
   const queryClient = useQueryClient();
   const roomCode = initialGame.roomCode;
 
-  // Fetch game state with React Query
+  // Fetch game state with React Query polling
   const { data: game = initialGame } = useQuery({
     queryKey: ["game", roomCode],
     queryFn: () => fetchGame(roomCode),
     initialData: initialGame,
-    refetchInterval: 30000, // Refetch every 30 seconds as backup
+    refetchInterval: 3000, // Poll every 3 seconds for real-time updates
+    refetchIntervalInBackground: true, // Keep polling even when tab is not focused
   });
 
   const currentPlayer = game.players.find((p) => p.id === playerId);
@@ -1428,45 +1294,6 @@ export function LobbyView({ initialGame, playerId: initialPlayerId }: LobbyViewP
       setPlayerId(storedPlayerId);
     }
   }, [roomCode]);
-
-  // WebSocket integration - update React Query cache
-  React.useEffect(() => {
-    if (!socket) return;
-
-    // Join room
-    socket.emit("join-lobby", { roomCode, playerId });
-
-    // Listen for game updates and update React Query cache
-    const handleGameUpdate = (updatedGame: Game) => {
-      queryClient.setQueryData(["game", roomCode], updatedGame);
-    };
-
-    const handlePlayerJoined = (updatedGame: Game) => {
-      queryClient.setQueryData(["game", roomCode], updatedGame);
-      toast.success("A player joined the game!");
-    };
-
-    const handlePlayerReadyChanged = (updatedGame: Game) => {
-      queryClient.setQueryData(["game", roomCode], updatedGame);
-    };
-
-    const handleStoryGenerated = (updatedGame: Game) => {
-      queryClient.setQueryData(["game", roomCode], updatedGame);
-      toast.success("Story generation complete!");
-    };
-
-    socket.on("game-updated", handleGameUpdate);
-    socket.on("player-joined", handlePlayerJoined);
-    socket.on("player-ready-changed", handlePlayerReadyChanged);
-    socket.on("story-generated", handleStoryGenerated);
-
-    return () => {
-      socket.off("game-updated", handleGameUpdate);
-      socket.off("player-joined", handlePlayerJoined);
-      socket.off("player-ready-changed", handlePlayerReadyChanged);
-      socket.off("story-generated", handleStoryGenerated);
-    };
-  }, [socket, roomCode, playerId, queryClient]);
 
   const handleCopyRoomCode = async () => {
     try {
@@ -1560,17 +1387,11 @@ export function LobbyView({ initialGame, playerId: initialPlayerId }: LobbyViewP
             size="lg"
             variant={currentPlayer.isReady ? "outline" : "default"}
             onClick={handleToggleReady}
+            disabled={readyMutation.isPending}
             className="w-full sm:w-auto"
           >
             {currentPlayer.isReady ? "Not Ready" : "Ready to Play"}
           </Button>
-        </div>
-      )}
-
-      {/* Connection Status */}
-      {!isConnected && (
-        <div className="text-center text-sm text-muted-foreground">
-          Connecting to server...
         </div>
       )}
     </div>
@@ -1614,15 +1435,16 @@ Run:
 npm install lucide-react
 ```
 
-**Step 5: Test lobby page**
+**Step 5: Test lobby page with polling**
 
-Navigate to a game lobby after creating a game. Verify:
+Navigate to a game lobby after creating a game. Open in two browser windows. Verify:
 - Room code displays correctly
 - Copy button works
 - Player list shows
 - Loading state shows for story generation
 - Ready button toggles optimistically
-- WebSocket updates reflected in React Query cache
+- Updates from other window appear within 3 seconds (React Query polling)
+- Join a player from second window, verify first window updates automatically
 
 **Step 6: Commit**
 
@@ -1633,7 +1455,7 @@ git commit -m "feat: add lobby page with React Query and real-time updates"
 
 ---
 
-## Task 12: Create ready status API endpoint
+## Task 10: Create ready status API endpoint
 
 **Files:**
 - Create: `src/app/api/games/ready/route.ts`
@@ -1671,8 +1493,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // TODO: Emit socket event for player ready changed
-
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error updating ready status:", error);
@@ -1703,157 +1523,7 @@ git commit -m "feat: add player ready status API endpoint"
 
 ---
 
-## Task 13: Integrate Socket.io with API routes
-
-**Files:**
-- Modify: `src/app/api/games/join/route.ts`
-- Modify: `src/app/api/games/ready/route.ts`
-- Modify: `src/app/api/games/story-callback/route.ts`
-- Modify: `src/lib/socket-server.ts`
-- Create: `src/lib/socket-io.ts`
-
-**Step 1: Create Socket.io singleton instance**
-
-Create: `src/lib/socket-io.ts`
-
-```typescript
-import { Server as SocketIOServer } from "socket.io";
-
-let io: SocketIOServer | null = null;
-
-export function getIO(): SocketIOServer | null {
-  return io;
-}
-
-export function setIO(instance: SocketIOServer) {
-  io = instance;
-}
-```
-
-**Step 2: Update socket server with lobby events**
-
-Modify: `src/lib/socket-server.ts`
-
-Replace entire file:
-```typescript
-import { Server as NetServer } from "http";
-import { Server as SocketIOServer } from "socket.io";
-import { setIO } from "./socket-io";
-
-export function initSocketServer(httpServer: NetServer): SocketIOServer {
-  const io = new SocketIOServer(httpServer, {
-    path: "/api/socket",
-    cors: {
-      origin: "*",
-      methods: ["GET", "POST"],
-    },
-  });
-
-  // Store global reference
-  setIO(io);
-
-  io.on("connection", (socket) => {
-    console.log("Client connected:", socket.id);
-
-    socket.on("join-lobby", ({ roomCode, playerId }) => {
-      console.log(`Player ${playerId} joining lobby ${roomCode}`);
-      socket.join(roomCode);
-    });
-
-    socket.on("leave-lobby", ({ roomCode }) => {
-      console.log(`Socket ${socket.id} leaving lobby ${roomCode}`);
-      socket.leave(roomCode);
-    });
-
-    socket.on("disconnect", () => {
-      console.log("Client disconnected:", socket.id);
-    });
-  });
-
-  return io;
-}
-
-export function emitToRoom(roomCode: string, event: string, data: any) {
-  const io = getIO();
-  if (io) {
-    io.to(roomCode).emit(event, data);
-  }
-}
-```
-
-**Step 3: Update join endpoint to emit socket event**
-
-Modify: `src/app/api/games/join/route.ts`
-
-Add import at top:
-```typescript
-import { getIO } from "@/lib/socket-io";
-```
-
-Replace the `// TODO: Emit socket event` comment with:
-```typescript
-    // Emit socket event for player joined
-    const io = getIO();
-    if (io) {
-      io.to(roomCode.toUpperCase()).emit("player-joined", game);
-    }
-```
-
-**Step 4: Update ready endpoint to emit socket event**
-
-Modify: `src/app/api/games/ready/route.ts`
-
-Add import at top:
-```typescript
-import { getIO } from "@/lib/socket-io";
-```
-
-Replace the `// TODO: Emit socket event` comment with:
-```typescript
-    // Emit socket event for player ready changed
-    const io = getIO();
-    if (io) {
-      io.to(roomCode.toUpperCase()).emit("player-ready-changed", game);
-    }
-```
-
-**Step 5: Update story callback to emit socket event**
-
-Modify: `src/app/api/games/story-callback/route.ts`
-
-Add import at top:
-```typescript
-import { getIO } from "@/lib/socket-io";
-```
-
-Replace the `// Emit socket event` comment with:
-```typescript
-      // Emit socket event to notify lobby
-      const io = getIO();
-      if (io) {
-        io.to(roomCode).emit("story-generated", game);
-      }
-```
-
-**Step 6: Test real-time updates**
-
-This requires manual testing:
-1. Create a game in one browser window
-2. Open lobby in another browser window (same room code)
-3. Join game from second window
-4. Verify first window shows new player in real-time
-5. Toggle ready status and verify it updates in real-time
-
-**Step 7: Commit**
-
-```bash
-git add src/lib/socket-server.ts src/lib/socket-io.ts src/app/api/games/join/route.ts src/app/api/games/ready/route.ts src/app/api/games/story-callback/route.ts
-git commit -m "feat: integrate Socket.io with game events for real-time updates"
-```
-
----
-
-## Task 14: Add .env.local to .gitignore
+## Task 11: Add .env.local to .gitignore
 
 **Files:**
 - Modify: `.gitignore`
@@ -1877,7 +1547,7 @@ git commit -m "chore: add .env.local to .gitignore"
 
 ---
 
-## Task 15: Update CLAUDE.md with new architecture
+## Task 12: Update CLAUDE.md with new architecture
 
 **Files:**
 - Modify: `CLAUDE.md`
@@ -1894,36 +1564,36 @@ Add new section after "Key Implementation Details":
 **Game Flow:**
 1. **Create Game** (`/create-game`): Host fills WorldGenerationForm → React Query mutation calls API → API creates game → calls n8n for story generation → redirects to lobby
 2. **Join Game** (`/join-game`): Player enters room code (verified via React Query mutation) → enters character name → React Query mutation joins lobby
-3. **Lobby** (`/lobby/[roomCode]`): Real-time view with React Query for state management, showing room code, players, ready status, and story generation progress
+3. **Lobby** (`/lobby/[roomCode]`): Real-time view with React Query polling for state synchronization, showing room code, players, ready status, and story generation progress
 
-**Real-time Communication:**
-- Socket.io for WebSocket connections (path: `/api/socket`)
-- Events: `join-lobby`, `player-joined`, `player-ready-changed`, `story-generated`
-- Global Socket.io instance managed via `src/lib/socket-io.ts`
-- WebSocket events update React Query cache directly via `queryClient.setQueryData()`
+**Real-time Updates:**
+- React Query polling with `refetchInterval: 3000` (every 3 seconds)
+- `refetchIntervalInBackground: true` for continuous updates
+- No WebSocket server required - works with serverless deployments
+- 3-second latency is acceptable for lobby interactions
 
 **State Management:**
 - **Server State:** TanStack React Query v5
   - Query key pattern: `["game", roomCode]`
-  - Optimistic updates for player ready status
-  - WebSocket events synchronize with React Query cache
-  - Automatic refetch every 30 seconds as backup
+  - Polling every 3 seconds for real-time synchronization
+  - Optimistic updates for player ready status (instant UI feedback)
+  - Automatic cache invalidation after mutations
 - **Database:** In-memory game store (`src/lib/game-store.ts`) using Map
   - Game state includes: roomCode, players, status, worldData, generatedStory
   - Player state includes: id, characterName, isReady, isHost
 
 **API Endpoints:**
 - `POST /api/games/create`: Create new game, trigger n8n story generation
-- `GET /api/games/[roomCode]`: Fetch game state (used by React Query)
+- `GET /api/games/[roomCode]`: Fetch game state (polled by React Query every 3s)
 - `POST /api/games/join`: Join existing game with character name
 - `POST /api/games/ready`: Toggle player ready status (optimistic updates via React Query)
 - `POST /api/games/story-callback`: Webhook for n8n to send generated story
 
 **React Query Patterns:**
 - **Mutations:** `useMutation` for create game, join game, toggle ready status
-- **Queries:** `useQuery` for fetching game state with initial data from server
+- **Queries:** `useQuery` with polling for real-time lobby state
 - **Optimistic Updates:** Ready status updates immediately before server confirmation
-- **Cache Synchronization:** WebSocket events update query cache for real-time sync
+- **Polling Strategy:** Aggressive 3-second polling for lobby synchronization
 - **Error Handling:** Automatic rollback on mutation failure
 
 **n8n Integration:**
@@ -1985,12 +1655,12 @@ Response from n8n to callback:
 - In-memory storage (data lost on server restart)
 - No authentication (playerId stored in sessionStorage)
 - No cleanup of old games
-- Socket.io server requires custom Next.js server (works in dev mode)
+- 3-second polling delay for updates (acceptable for lobby, but consider WebSockets for active gameplay)
 
 **Production Considerations:**
 - Implement proper authentication
 - Use persistent database (Supabase, PostgreSQL)
 - Add game expiration/cleanup
-- Deploy Socket.io separately or use managed service (Pusher, Ably)
+- For active gameplay: Consider WebSockets/Socket.io for sub-second updates
 - Add error boundaries and loading states
-- Implement reconnection logic for WebSockets
+- Consider longer polling intervals to reduce server load (5-10s may be sufficient)
