@@ -3,7 +3,7 @@ import {
   CharacterSheet,
   Game,
   Player,
-  AIGeneratedGame
+  AIGeneratedGame,
 } from "@/types/game";
 import { supabase } from "../lib/services/supabase";
 
@@ -108,7 +108,12 @@ class GameStore {
 
     console.log("Supabase update error:", error);
 
-    return updatedGame;
+    return {
+      ...currentGame,
+      story,
+      narratorVoiceId: narratorVoice.voiceId,
+      roomData: JSON.stringify(map),
+    };
   }
 
   getGame(roomCode: string): Game | undefined {

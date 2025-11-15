@@ -19,9 +19,9 @@ export async function POST(req: NextRequest) {
     // Create game
     const game = await gameStore.createGame(worldData);
 
-    triggerWorldAndStoryGeneration(game);
+    const updatedGame = await triggerWorldAndStoryGeneration(game);
 
-    await facilitatorAgent(game);
+    await facilitatorAgent(updatedGame);
 
     return NextResponse.json({
       roomCode: game.roomCode,
@@ -43,5 +43,5 @@ async function triggerWorldAndStoryGeneration(game: Game) {
   }
 
   gameStore.updateGameStatus(game.roomCode, "ready");
-  gameStore.addStoryAndMapToGame(game.roomCode, result);
+  return await gameStore.addStoryAndMapToGame(game.roomCode, result);
 }

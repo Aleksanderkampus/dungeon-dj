@@ -4,7 +4,6 @@ import { Game } from "@/types/game";
 import { Static, Type } from "@sinclair/typebox";
 import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 import "dotenv/config";
-import { text } from "stream/consumers";
 import {
   assembleHeadingSStoryUserPrompt,
   assembleHeadingStorySystemPrompt,
@@ -35,27 +34,35 @@ const StoryHeadings = Type.Object({
 
 type StoryHeadings = Static<typeof StoryHeadings>;
 
-export async function facilitatorAgent(game: Game) {
+export async function facilitatorAgent(
+  game: Pick<Game, "roomCode" | "story" | "narratorVoiceId">
+) {
   const memory = {
     currentStep: "Instroduction",
   };
 
-  const storyheadings = await generateHeadings(game, memory.currentStep);
+  const storyheadings = await generateHeadings(game);
 
-  await createAudioStreamFromText(storyheadings.headings[0].storyPart);
+  console.log("Generated Story Headings:", JSON.stringify(storyheadings));
+
+  if (!game.narratorVoiceId) {
+    throw new Error("Narrator voice ID is missing in the game data");
+  }
+
+  return await createAudioStreamFromText(
+    game.narratorVoiceId,
+    storyheadings.headings[0].storyPart
+  );
 }
 
-export async function generateHeadings(
-  game: Game,
-  step: string
-): Promise<StoryHeadings> {
+export async function generateHeadings(game: Game): Promise<StoryHeadings> {
   const storySteps = await openai.chat.completions.create({
     model: "gpt-4.1-mini",
     messages: [
       { role: "system", content: assembleHeadingStorySystemPrompt() },
       {
         role: "user",
-        content: assembleHeadingSStoryUserPrompt(game.generatedStory || ""),
+        content: assembleHeadingSStoryUserPrompt(game.story || ""),
       },
     ],
     response_format: {
@@ -79,26 +86,30 @@ export async function generateHeadings(
   }
 }
 
-export async function createAudioStreamFromText(text: string): Promise<Buffer> {
-  const audioStream = await elevenlabs.textToSpeech.stream(
-    "JBFqnCBsd6RMkjVDRZzb",
-    {
-      modelId: "eleven_multilingual_v2",
-      text,
-      outputFormat: "mp3_44100_128",
-      // // Optional voice settings that allow you to customize the output
-      // voiceSettings: {
-      //   stability: 0,
-      //   similarityBoost: 1.0,
-      //   useSpeakerBoost: true,
-      //   speed: 1.0,
-      // },
-    }
-  );
+export async function createAudioStreamFromText(
+  voiceId: string,
+  text: string
+): Promise<Buffer> {
+  const audioStream = await elevenlabs.textToSpeech.stream(voiceId, {
+    modelId: "eleven_multilingual_v2",
+    text,
+    // outputFormat: "mp3_44100_128",
+    // // Optional voice settings that allow you to customize the output
+    // voiceSettings: {
+    //   stability: 0,
+    //   similarityBoost: 1.0,
+    //   useSpeakerBoost: true,
+    //   speed: 1.0,
+    // },
+  });
   const chunks: Buffer[] = [];
+
+  console.log("Starting to read audio stream...", audioStream);
   for await (const chunk of audioStream) {
     chunks.push(chunk);
   }
   const content = Buffer.concat(chunks);
+
+  console.log("Finished reading audio stream.", content);
   return content;
 }
