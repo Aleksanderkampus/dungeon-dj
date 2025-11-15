@@ -11,6 +11,7 @@ Guidelines:
 - Keep numbers believable for level 1 heroes (ability scores between 8-18, hit points 6-16).
 - Skills, equipment, and special abilities must relate to the setting and background.
 - Avoid rules jargon that doesn't exist in 5e.
+- Always include a "hitPoints" number describing recommended starting HP.
 - Never include markdown, commentary, or code fences in the response—JSON only.
 `;
 }

@@ -28,6 +28,11 @@ const CharacterSheetSchema = Type.Object({
     minimum: 1,
     maximum: 5,
   }),
+  hitPoints: Type.Integer({
+    description: "Recommended starting hit points",
+    minimum: 4,
+    maximum: 30,
+  }),
   alignment: Type.String({
     description: "Short description of alignment or ethos",
   }),

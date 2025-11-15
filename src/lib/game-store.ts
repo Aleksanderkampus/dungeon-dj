@@ -51,20 +51,32 @@ class GameStore {
     const game: Game = {
       roomCode,
       status: "generating",
+      players: [],
       worldData,
     };
 
-    const { error } = await supabase.from("games").insert({
-      room_code: roomCode,
-      status: game.status,
-      genre: worldData.genre,
-      team_background: worldData.teamBackground,
-      story_goal: worldData.storyGoal,
-      story_idea: worldData.storyIdea,
-      actions_per_session: worldData.actionsPerSession,
-    });
+    const { data, error } = await supabase
+      .from("games")
+      .insert({
+        room_code: roomCode,
+        status: game.status,
+        genre: worldData.genre,
+        team_background: worldData.teamBackground,
+        story_goal: worldData.storyGoal,
+        story_idea: worldData.storyIdea,
+        actions_per_session: worldData.actionsPerSession,
+      })
+      .select("id")
+      .single();
 
-    console.log("Supabase insert error:", error);
+    if (error) {
+      console.log("Supabase insert error:", error);
+    }
+
+    if (data?.id) {
+      game.supabaseId = data.id;
+    }
+
     this.games.set(roomCode, game);
     return game;
   }
@@ -137,10 +149,10 @@ class GameStore {
     const game = this.games.get(roomCode);
     if (!game) return null;
 
-    // const player = game.players.find((p) => p.id === playerId);
-    // if (!player) return null;
+    const player = game.players.find((p) => p.id === playerId);
+    if (!player) return null;
 
-    // player.isReady = isReady;
+    player.isReady = isReady;
     this.games.set(roomCode, game);
     return game;
   }
@@ -168,7 +180,7 @@ class GameStore {
     const game = this.games.get(roomCode);
     if (!game) return null;
 
-    // game.players = game.players.filter((p) => p.id !== playerId);
+    game.players = game.players.filter((p) => p.id !== playerId);
     this.games.set(roomCode, game);
     return game;
   }
@@ -209,9 +221,81 @@ class GameStore {
   ): Game | null {
     return this.updatePlayerState(roomCode, playerId, (player) => {
       player.characterSheet = sheet;
+      player.hp = sheet.hitPoints;
+      player.strength = sheet.abilityScores.strength;
+      player.dexterity = sheet.abilityScores.dexterity;
+      player.constitution = sheet.abilityScores.constitution;
+      player.intelligence = sheet.abilityScores.intelligence;
+      player.wisdom = sheet.abilityScores.wisdom;
+      player.charisma = sheet.abilityScores.charisma;
+      player.skills = sheet.skills;
+      player.race = sheet.ancestry;
+      player.class = sheet.characterClass;
       player.characterGenerationStatus = "ready";
       player.characterGenerationError = undefined;
     });
+  }
+
+  async savePlayerCharacterToDatabase(params: {
+    roomCode: string;
+    playerId: string;
+    sheet: CharacterSheet;
+    background: string;
+  }) {
+    const { roomCode, playerId, sheet, background } = params;
+    const game = this.games.get(roomCode);
+    if (!game) {
+      console.error(
+        "[gameStore] Unable to persist player — game missing for room",
+        roomCode
+      );
+      return;
+    }
+
+    const supabaseGameId = await this.ensureSupabaseGameId(roomCode);
+    if (!supabaseGameId) {
+      console.error("Unable to resolve Supabase game id for room", roomCode);
+      return;
+    }
+
+    const player = game.players.find((p) => p.id === playerId);
+    if (!player) {
+      console.error(
+        "[gameStore] Unable to persist player — player not found",
+        playerId
+      );
+      return;
+    }
+
+    const payload = {
+      name: sheet.name || player?.characterName || "Unknown Adventurer",
+      backstory: background,
+      HP: sheet.hitPoints,
+      attributes: sheet.abilityScores,
+      skills: sheet.skills,
+      equipment: sheet.equipment,
+      game_id: supabaseGameId,
+    };
+
+    console.log("[gameStore] Inserting player into Supabase", {
+      gameId: supabaseGameId,
+      playerId,
+      name: payload.name,
+    });
+
+    const { data, error } = await supabase
+      .from("players")
+      .insert(payload)
+      .select("id")
+      .single();
+    if (error) {
+      console.error("Supabase player insert error:", error);
+    } else {
+      console.log("[gameStore] Player stored in Supabase", {
+        playerId,
+        supabasePlayerId: data?.id,
+      });
+    }
   }
 
   private updatePlayerState(
@@ -228,6 +312,32 @@ class GameStore {
     updater(player);
     this.games.set(roomCode, game);
     return game;
+  }
+
+  private async ensureSupabaseGameId(
+    roomCode: string
+  ): Promise<number | null> {
+    const game = this.games.get(roomCode);
+    if (!game) return null;
+
+    if (game.supabaseId) {
+      return game.supabaseId;
+    }
+
+    const { data, error } = await supabase
+      .from("games")
+      .select("id")
+      .eq("room_code", roomCode)
+      .single();
+
+    if (error || !data?.id) {
+      console.error("Failed to load Supabase game id:", error);
+      return null;
+    }
+
+    game.supabaseId = data.id;
+    this.games.set(roomCode, game);
+    return data.id;
   }
 }
 

@@ -19,6 +19,7 @@ export type CharacterSheet = {
   ancestry: string;
   characterClass: string;
   level: number;
+  hitPoints: number;
   alignment: string;
   backgroundSummary: string;
   abilityScores: AbilityScores;
@@ -62,6 +63,7 @@ export type GameStatus =
 export type Game = {
   roomCode: string;
   status: GameStatus;
+  players: Player[];
   worldData: {
     genre: string;
     teamBackground: string;
@@ -77,6 +79,7 @@ export type Game = {
   gameState?: string;
   updatedAt?: Date;
   narratorVoiceId?: string;
+  supabaseId?: number;
 };
 
 export const RoomPlanSchema = Type.Object({
