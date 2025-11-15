@@ -106,3 +106,46 @@ Located in `src/components/create-agent-form/world-generation-form.tsx`:
 - All form values typed via Zod schema inference
 - Component props use React.ComponentProps for proper typing
 - Variant props via `class-variance-authority` VariantProps utility
+
+### Multiplayer Game System
+
+**Game Flow:**
+1. **Create Game** (`/create-game`): Host fills WorldGenerationForm → React Query mutation calls API → API creates game → calls n8n for story generation → redirects to lobby
+2. **Join Game** (`/join-game`): Player enters room code (verified via React Query mutation) → enters character name → React Query mutation joins lobby
+3. **Lobby** (`/lobby/[roomCode]`): Real-time view with React Query polling for state synchronization, showing room code, players, ready status, and story generation progress
+
+**Real-time Updates:**
+- React Query polling with `refetchInterval: 3000` (every 3 seconds)
+- `refetchIntervalInBackground: true` for continuous updates
+- No WebSocket server required - works with serverless deployments
+- 3-second latency is acceptable for lobby interactions
+
+**State Management:**
+- **Server State:** TanStack React Query v5
+  - Query key pattern: `["game", roomCode]`
+  - Polling every 3 seconds for real-time synchronization
+  - Optimistic updates for player ready status (instant UI feedback)
+  - Automatic cache invalidation after mutations
+- **Database:** In-memory game store (`src/lib/game-store.ts`) using Map
+  - Game state includes: roomCode, players, status, worldData, generatedStory
+  - Player state includes: id, characterName, isReady, isHost
+
+**API Endpoints:**
+- `POST /api/games/create`: Create new game, trigger n8n story generation
+- `GET /api/games/[roomCode]`: Fetch game state (polled by React Query every 3s)
+- `POST /api/games/join`: Join existing game with character name
+- `POST /api/games/ready`: Toggle player ready status (optimistic updates via React Query)
+- `POST /api/games/story-callback`: Webhook for n8n to send generated story
+
+**React Query Patterns:**
+- **Mutations:** `useMutation` for create game, join game, toggle ready status
+- **Queries:** `useQuery` with polling for real-time lobby state
+- **Optimistic Updates:** Ready status updates immediately before server confirmation
+- **Polling Strategy:** Aggressive 3-second polling for lobby synchronization
+- **Error Handling:** Automatic rollback on mutation failure
+
+**n8n Integration:**
+- Environment variable: `N8N_WEBHOOK_URL`
+- Sends: worldData + roomCode + callbackUrl
+- Expects callback: `{ roomCode, story, status: "success" }`
+- Game status: `generating` → `ready` when story arrives
