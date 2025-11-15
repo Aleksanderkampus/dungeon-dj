@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     });
 
     // Trigger n8n story generation (async)
-    triggerStoryGeneration(game);
+    //triggerStoryGeneration(game);
 
     return NextResponse.json({
       roomCode: game.roomCode,
@@ -48,7 +48,9 @@ export async function POST(req: NextRequest) {
 async function triggerStoryGeneration(game: Game) {
   try {
     // TODO: Replace with actual n8n endpoint URL
-    const n8nEndpoint = process.env.N8N_WEBHOOK_URL || "http://localhost:5678/webhook/generate-story";
+    const n8nEndpoint =
+      process.env.N8N_WEBHOOK_URL ||
+      "http://localhost:5678/webhook/generate-story";
 
     const response = await fetch(n8nEndpoint, {
       method: "POST",

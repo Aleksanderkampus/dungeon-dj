@@ -3,13 +3,14 @@ import { gameStore } from "@/lib/game-store";
 import { LobbyView } from "@/components/lobby/lobby-view";
 
 type LobbyPageProps = {
-  params: {
+  params: Promise<{
     roomCode: string;
-  };
+  }>;
 };
 
-export default function LobbyPage({ params }: LobbyPageProps) {
-  const roomCode = params.roomCode.toUpperCase();
+export default async function LobbyPage({ params }: LobbyPageProps) {
+  const { roomCode: rawRoomCode } = await params;
+  const roomCode = rawRoomCode.toUpperCase();
   const game = gameStore.getGame(roomCode);
 
   if (!game) {
