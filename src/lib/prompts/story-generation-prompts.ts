@@ -50,13 +50,8 @@ Monster and Battle Rules:
 }
 
 export function assembleStoryUserPrompt(worldData: Game): string {
-  const {
-    genre,
-    teamBackground,
-    storyGoal,
-    storyIdea,
-    actionsPerSession,
-  } = worldData.worldData;
+  const { genre, teamBackground, storyGoal, storyIdea, actionsPerSession } =
+    worldData.worldData;
 
   return `
     
