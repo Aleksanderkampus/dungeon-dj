@@ -15,6 +15,7 @@ import { PlayerList } from "./player-list";
 import { CharacterCreationPanel } from "./character-creation-panel";
 import { Loader2, Copy, CheckCircle2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
+import QRCode from "react-qr-code";
 
 type LobbyViewProps = {
   initialGame: Game;
@@ -154,19 +155,35 @@ export function LobbyView({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-3">
-            <div className="rounded-lg border bg-muted px-6 py-4">
-              <span className="font-mono text-3xl font-bold tracking-wider">
-                {game.roomCode}
-              </span>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+            <div className="flex flex-1 items-center gap-3">
+              <div className="rounded-lg border bg-muted px-6 py-4">
+                <span className="font-mono text-3xl font-bold tracking-wider">
+                  {game.roomCode}
+                </span>
+              </div>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handleCopyRoomCode}
+              >
+                {copied ? (
+                  <CheckCircle2 className="h-4 w-4" />
+                ) : (
+                  <Copy className="h-4 w-4" />
+                )}
+              </Button>
             </div>
-            <Button variant="outline" size="icon" onClick={handleCopyRoomCode}>
-              {copied ? (
-                <CheckCircle2 className="h-4 w-4" />
-              ) : (
-                <Copy className="h-4 w-4" />
-              )}
-            </Button>
+            <div className="flex items-center justify-center sm:w-40">
+              <div className="w-full max-w-[160px] overflow-hidden rounded-lg border bg-white p-2">
+                <QRCode
+                  size={256}
+                  style={{ height: "auto", width: "100%" }}
+                  value={`${process.env.NEXT_PUBLIC_APP_URL || ""}/join-game?roomCode=${game.roomCode}`}
+                  viewBox="0 0 256 256"
+                />
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
