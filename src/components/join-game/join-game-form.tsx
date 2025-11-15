@@ -24,6 +24,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "../ui/textarea";
 
 const formSchema = z.object({
   roomCode: z
@@ -37,6 +38,10 @@ const formSchema = z.object({
     .string()
     .min(2, "Character name must be at least 2 characters")
     .max(30, "Character name must be at most 30 characters"),
+  characterBackground: z
+    .string()
+    .min(100, "Character background must be at least 100 characters")
+    .max(300, "Character background must be at most 300 characters"),
 });
 
 // API functions
@@ -52,7 +57,11 @@ async function verifyRoomCode(roomCode: string) {
   return data;
 }
 
-async function joinGame(data: { roomCode: string; characterName: string }) {
+async function joinGame(data: {
+  roomCode: string;
+  characterName: string;
+  characterBackground: string;
+}) {
   const response = await fetch("/api/games/join", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -69,9 +78,9 @@ async function joinGame(data: { roomCode: string; characterName: string }) {
 
 export function JoinGameForm() {
   const router = useRouter();
-  const [step, setStep] = React.useState<"roomCode" | "characterName">(
-    "roomCode"
-  );
+  const [step, setStep] = React.useState<
+    "roomCode" | "characterName" | "characterBackground"
+  >("roomCode");
   const [verifiedRoomCode, setVerifiedRoomCode] = React.useState<string>("");
 
   // Verify room code mutation
@@ -109,15 +118,17 @@ export function JoinGameForm() {
     defaultValues: {
       roomCode: "",
       characterName: "",
+      characterBackground: "",
     },
     validators: {
       onChange: formSchema,
+      onSubmit: formSchema,
     },
     onSubmit: async ({ value }) => {
-      // Only submit on character name step (final step)
       joinMutation.mutate({
         roomCode: verifiedRoomCode,
         characterName: value.characterName,
+        characterBackground: value.characterBackground,
       });
     },
   });
@@ -136,10 +147,22 @@ export function JoinGameForm() {
         verifyMutation.mutate(upperRoomCode);
       }
     }
+    if (step === "characterName") {
+      // Validate the character name field
+      await form.validateField("characterName", "change");
+      const fieldMeta = form.getFieldMeta("characterName");
+      if (!fieldMeta?.errors?.length) {
+        setStep("characterBackground");
+      }
+    }
   };
 
   const handleBack = () => {
-    setStep("roomCode");
+    if (step === "characterBackground") {
+      setStep("characterName");
+    } else {
+      setStep("roomCode");
+    }
   };
 
   const isLoading = verifyMutation.isPending || joinMutation.isPending;
@@ -229,17 +252,50 @@ export function JoinGameForm() {
                 }}
               </form.Field>
             )}
+            {step === "characterBackground" && (
+              <form.Field name="characterBackground">
+                {(field) => {
+                  const isInvalid =
+                    field.state.meta.isTouched && !field.state.meta.isValid;
+                  return (
+                    <Field data-invalid={isInvalid}>
+                      <FieldLabel htmlFor={field.name}>
+                        Character Background
+                      </FieldLabel>
+                      <Textarea
+                        id={field.name}
+                        name={field.name}
+                        value={field.state.value}
+                        onBlur={field.handleBlur}
+                        onChange={(e) => field.handleChange(e.target.value)}
+                        placeholder="I am a brave knight who is seeking adventure..."
+                        rows={6}
+                        className="min-h-32 resize-none"
+                        aria-invalid={isInvalid}
+                      />
+                      <FieldDescription>
+                        Describe your character&apos;s background (100-300
+                        characters) ({field.state.value.length}/300 characters)
+                      </FieldDescription>
+                      {isInvalid && (
+                        <FieldError errors={field.state.meta.errors} />
+                      )}
+                    </Field>
+                  );
+                }}
+              </form.Field>
+            )}
           </FieldGroup>
         </CardContent>
         <CardFooter className="flex justify-between">
-          {step === "characterName" ? (
+          {step === "characterName" || step === "characterBackground" ? (
             <Button type="button" variant="outline" onClick={handleBack}>
               Back
             </Button>
           ) : (
             <div />
           )}
-          {step === "roomCode" ? (
+          {step === "roomCode" || step === "characterName" ? (
             <Button type="button" onClick={handleContinue} disabled={isLoading}>
               {isLoading ? "Loading..." : "Continue"}
             </Button>

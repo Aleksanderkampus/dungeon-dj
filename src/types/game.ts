@@ -2,7 +2,18 @@ export type Player = {
   id: string;
   characterName: string;
   isReady: boolean;
-  isHost: boolean;
+  race?: string;
+  class?: string;
+  skills?: string[];
+  flaw?: string;
+  hp?: number;
+  strength?: number;
+  dexterity?: number;
+  constitution?: number;
+  intelligence?: number;
+  wisdom?: number;
+  charisma?: number;
+  generated_voice_id?: string;
 };
 
 export type GameStatus =

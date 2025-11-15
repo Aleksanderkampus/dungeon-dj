@@ -109,7 +109,7 @@ export function WorldGenerationForm() {
       sessionStorage.setItem("playerId", hostId);
       sessionStorage.setItem("roomCode", roomCode);
 
-      toast.success("Game created successfully!");
+      toast.success("Lobby created successfully!");
       router.push(`/lobby/${roomCode}`);
     },
     onError: (error: Error) => {
