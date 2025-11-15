@@ -48,7 +48,7 @@ export async function generateGameStory(worldData: Game): Promise<string> {
   const storyUserMessage = assembleStoryUserPrompt(worldData);
 
   const completion = await openai.chat.completions.create({
-    model: "gpt-4.1",
+    model: "gpt-4.1-mini",
     messages: [
       { role: "system", content: storySystemMessage },
       { role: "user", content: storyUserMessage },
@@ -64,7 +64,7 @@ export async function generateGameMap(story: string): Promise<RoomPlanSchema> {
   const storyUserMessage = assembleMapGenerationUserPrompt(story);
 
   const completion = await openai.chat.completions.create({
-    model: "gpt-4.1",
+    model: "gpt-4.1-mini",
     messages: [
       { role: "system", content: storySystemMessage },
       { role: "user", content: storyUserMessage },
@@ -94,7 +94,7 @@ export async function generateNarratorVoiceDescription(
   const narratorUserVoicePrompt = assembleNarratorUserVoicePrompt(story);
 
   const completion = await openai.chat.completions.create({
-    model: "gpt-4.1",
+    model: "gpt-4.1-mini",
     messages: [
       { role: "system", content: narratorSystemVoicePrompt },
       { role: "user", content: narratorUserVoicePrompt },

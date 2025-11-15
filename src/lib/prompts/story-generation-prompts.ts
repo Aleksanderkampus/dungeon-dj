@@ -17,11 +17,23 @@ Rules
 - Generated story will be created for the player base of up to 5 people.
 - Generated story has to be made long enough that it fits for 4 hour session.
 - Make sure to be super descriptive about rooms and NPCs you generate. Generated story will be forwarded to the actual MAP creation agent and Video and Image generated agents
+- Separate different sections of the story with clear headings of each element.
+- Introduction to the Story must be separated from the rest of the story with clear XML tags <introduction></introduction>.
+- Each Room description must be separated from the rest of the story with clear XML tags <room_n></room_n>, where n is the number of the room starting from 1 to the total number of rooms.
+
 
 Story must include:
 - NPCs that players can interact with
 - Monsters that Players have to fight with
 - Different Rooms that players have to visit or have
+
+Story Elements that have to be included:
+- Introudction to the Story that sets the scene and mood.
+- Description of each Room that players have to visit. 
+- Description of different NPCs that players can interact with.
+- Description of different Monsters that players have to fight with
+- Description of different Battles or Challenges that players have to resolve
+- Conclusion that wraps up the story and provides closure to the players
 
 Room Rules:
 - Players should have possibility to find different equipment or other things in the room to further enhance their journey

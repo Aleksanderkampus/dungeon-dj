@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { gameStore } from "@/lib/game-store";
 import { Game } from "@/types/game";
 import { setTheGameScene } from "@/lib/services/story-generating-service";
+import { facilitatorAgent } from "@/lib/services/facilitator-service";
 
 export async function POST(req: NextRequest) {
   try {
@@ -18,7 +19,9 @@ export async function POST(req: NextRequest) {
     // Create game
     const game = await gameStore.createGame(worldData);
 
-    triggerWorldAndStoryGeneration(game);
+    const updatedGame = await triggerWorldAndStoryGeneration(game);
+
+    await facilitatorAgent(updatedGame);
 
     return NextResponse.json({
       roomCode: game.roomCode,
@@ -40,5 +43,5 @@ async function triggerWorldAndStoryGeneration(game: Game) {
   }
 
   gameStore.updateGameStatus(game.roomCode, "ready");
-  gameStore.addStoryAndMapToGame(game.roomCode, result);
+  return await gameStore.addStoryAndMapToGame(game.roomCode, result);
 }
