@@ -1,4 +1,6 @@
 import { Static, Type } from "@sinclair/typebox";
+import { ChatCompletionMessageParam } from "openai/resources";
+
 export type CharacterGenerationStatus =
   | "idle"
   | "generating"
@@ -74,7 +76,7 @@ export type Game = {
   createdAt?: Date;
   story?: string;
   roomData?: string;
-  gameState?: string;
+  gameState?: GameState;
   updatedAt?: Date;
   narratorVoiceId?: string;
 };
@@ -118,4 +120,16 @@ export type AIGeneratedGame = {
   story: string;
   map: RoomPlanSchema;
   narratorVoice: { voiceId: string };
+};
+
+export type StorySectionObject = {
+  id: number;
+  heading: string;
+  storyPart: string;
+  sectionStatus: "pending" | "being_narrated" | "has_completed";
+  interactionsTakenInTheRoom: ChatCompletionMessageParam[];
+};
+
+export type GameState = {
+  storySections: StorySectionObject[];
 };
