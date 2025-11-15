@@ -42,7 +42,7 @@ const formSchema = z.object({
     .string()
     .min(20, "Story goal must be at least 20 characters")
     .max(500, "Story goal must be at most 500 characters"),
-  storyDescription: z
+  storyIdea: z
     .string()
     .min(10, "Story description must be at least 10 characters")
     .max(1000, "Story description must be at most 1000 characters"),
@@ -123,7 +123,7 @@ export function WorldGenerationForm() {
     1: "genre",
     2: "teamBackground",
     3: "storyGoal",
-    4: "storyDescription",
+    4: "storyIdea",
     5: "facilitatorPersona",
     6: "facilitatorVoice",
     7: "actionsPerSession",
@@ -134,7 +134,7 @@ export function WorldGenerationForm() {
       genre: "",
       teamBackground: "",
       storyGoal: "",
-      storyDescription: "",
+      storyIdea: "",
       facilitatorPersona: "",
       facilitatorVoice: "",
       actionsPerSession: "",
@@ -305,7 +305,7 @@ export function WorldGenerationForm() {
 
             {/* Step 4: Story Description */}
             {currentStep === 4 && (
-              <form.Field name="storyDescription">
+              <form.Field name="storyIdea">
                 {(field) => {
                   const isInvalid =
                     field.state.meta.isTouched && !field.state.meta.isValid;
@@ -504,7 +504,7 @@ export function WorldGenerationForm() {
                   form="world-generation-form"
                   disabled={createGameMutation.isPending}
                 >
-                  {createGameMutation.isPending ? "Creating..." : "Submit"}
+                  {createGameMutation.isPending ? "Creating game..." : "Submit"}
                 </Button>
               ) : (
                 <Button type="button" onClick={handleNext}>
