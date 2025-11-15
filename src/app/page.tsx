@@ -1,9 +1,9 @@
-import { BugReportForm } from "@/components/ui/bug-report";
+import { WorldGenerationForm } from "@/components/create-agent-form/world-generation-form";
 
 export default function Home() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <BugReportForm />
+      <WorldGenerationForm />
     </div>
   );
 }
