@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/card";
 import { PlayerList } from "./player-list";
 import { CharacterCreationPanel } from "./character-creation-panel";
+import { SpeechToTextTester } from "./speech-to-text-tester";
 import { Loader2, Copy, CheckCircle2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import QRCode from "react-qr-code";
@@ -238,7 +239,10 @@ export function LobbyView({
 
       {/* Character Creation */}
       {playerId && currentPlayer && (
-        <CharacterCreationPanel player={currentPlayer} />
+        <>
+          <CharacterCreationPanel player={currentPlayer} />
+          <SpeechToTextTester />
+        </>
       )}
 
       {/* Ready Button */}
