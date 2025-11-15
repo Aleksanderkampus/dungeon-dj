@@ -10,9 +10,16 @@ class GameStore {
 
   constructor() {
     // Reuse existing map in development to survive HMR
-    if (process.env.NODE_ENV === "development" && globalForGameStore.gameStoreMap) {
+    if (
+      process.env.NODE_ENV === "development" &&
+      globalForGameStore.gameStoreMap
+    ) {
       this.games = globalForGameStore.gameStoreMap;
-      console.log("[GameStore] Reusing existing store with", this.games.size, "games");
+      console.log(
+        "[GameStore] Reusing existing store with",
+        this.games.size,
+        "games"
+      );
     } else {
       this.games = new Map();
       console.log("[GameStore] Created new store");
@@ -38,11 +45,10 @@ class GameStore {
     return code;
   }
 
-  createGame(hostId: string, worldData: Game["worldData"]): Game {
+  createGame(worldData: Game["worldData"]): Game {
     const roomCode = this.generateRoomCode();
     const game: Game = {
       roomCode,
-      hostId,
       players: [],
       status: "generating",
       worldData,

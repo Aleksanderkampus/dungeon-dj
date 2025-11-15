@@ -29,7 +29,10 @@ const formSchema = z.object({
   roomCode: z
     .string()
     .length(6, "Room code must be 6 characters")
-    .regex(/^[A-Z0-9]+$/, "Room code must contain only uppercase letters and numbers"),
+    .regex(
+      /^[A-Z0-9]+$/,
+      "Room code must contain only uppercase letters and numbers"
+    ),
   characterName: z
     .string()
     .min(2, "Character name must be at least 2 characters")
@@ -45,7 +48,9 @@ async function verifyRoomCode(roomCode: string) {
     throw new Error(error.message || "Invalid room code");
   }
 
-  return response.json();
+  const data = await response.json();
+  console.log("Verified room code:", data);
+  return data;
 }
 
 async function joinGame(data: { roomCode: string; characterName: string }) {
@@ -65,7 +70,9 @@ async function joinGame(data: { roomCode: string; characterName: string }) {
 
 export function JoinGameForm() {
   const router = useRouter();
-  const [step, setStep] = React.useState<"roomCode" | "characterName">("roomCode");
+  const [step, setStep] = React.useState<"roomCode" | "characterName">(
+    "roomCode"
+  );
   const [verifiedRoomCode, setVerifiedRoomCode] = React.useState<string>("");
 
   // Verify room code mutation
@@ -75,7 +82,9 @@ export function JoinGameForm() {
       setStep("characterName");
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Invalid room code. Please check and try again.");
+      toast.error(
+        error.message || "Invalid room code. Please check and try again."
+      );
     },
   });
 
@@ -106,18 +115,29 @@ export function JoinGameForm() {
       onChange: formSchema,
     },
     onSubmit: async ({ value }) => {
-      if (step === "roomCode") {
-        const upperRoomCode = value.roomCode.toUpperCase();
-        setVerifiedRoomCode(upperRoomCode);
-        verifyMutation.mutate(upperRoomCode);
-      } else {
-        joinMutation.mutate({
-          roomCode: verifiedRoomCode,
-          characterName: value.characterName,
-        });
-      }
+      // Only submit on character name step (final step)
+      joinMutation.mutate({
+        roomCode: verifiedRoomCode,
+        characterName: value.characterName,
+      });
     },
   });
+
+  const handleContinue = async () => {
+    if (step === "roomCode") {
+      // Validate the room code field
+      await form.validateField("roomCode", "change");
+
+      const fieldMeta = form.getFieldMeta("roomCode");
+
+      if (!fieldMeta?.errors?.length) {
+        // If valid, verify the room code
+        const upperRoomCode = form.getFieldValue("roomCode").toUpperCase();
+        setVerifiedRoomCode(upperRoomCode);
+        verifyMutation.mutate(upperRoomCode);
+      }
+    }
+  };
 
   const handleBack = () => {
     setStep("roomCode");
@@ -138,6 +158,7 @@ export function JoinGameForm() {
         </CardDescription>
       </CardHeader>
       <form
+        id="join-game-form"
         onSubmit={(e) => {
           e.preventDefault();
           form.handleSubmit();
@@ -219,13 +240,23 @@ export function JoinGameForm() {
           ) : (
             <div />
           )}
-          <Button type="submit" disabled={isLoading}>
-            {isLoading
-              ? "Loading..."
-              : step === "roomCode"
-              ? "Continue"
-              : "Join Game"}
-          </Button>
+          {step === "roomCode" ? (
+            <Button
+              type="button"
+              onClick={handleContinue}
+              disabled={isLoading}
+            >
+              {isLoading ? "Loading..." : "Continue"}
+            </Button>
+          ) : (
+            <Button
+              type="submit"
+              form="join-game-form"
+              disabled={isLoading}
+            >
+              {isLoading ? "Loading..." : "Join Game"}
+            </Button>
+          )}
         </CardFooter>
       </form>
     </Card>
