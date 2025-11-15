@@ -1,7 +1,6 @@
 import OpenAI from "openai";
 import dotenv from "dotenv";
-import { Game } from "@/types/game";
-import { Static, Type } from "@sinclair/typebox";
+import { AIGeneratedGame, Game, RoomPlanSchema } from "@/types/game";
 import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 import "dotenv/config";
 
@@ -26,46 +25,9 @@ const openai = new OpenAI({
 
 const elevenlabs = new ElevenLabsClient();
 
-const RoomPlanSchema = Type.Object({
-  rooms: Type.Array(
-    Type.Object({
-      npc: Type.Object({
-        npcName: Type.String({ description: "Name of the NPC" }),
-        npcType: Type.String({
-          description: "Type of NPC",
-          enum: ["bad", "neutral", "good"],
-        }),
-        damage: Type.Number({
-          description: "Damage that the provided NPC can do. Maximum is 5",
-          minimum: 0,
-          maximum: 5,
-        }),
-      }),
-      roomDescription: Type.String({
-        description:
-          "In-depth description of a room that takes into account the NPCs that are there.",
-      }),
-      equipments: Type.Array(
-        Type.String({
-          description: "Equipment that can be found in the room",
-        }),
-        { description: "Equipments that can be found in the room" }
-      ),
-    }),
-    {
-      description:
-        "Array of all the room objects with their NPCs and equipments",
-    }
-  ),
-});
-
-type RoomPlanSchema = Static<typeof RoomPlanSchema>;
-
-export async function setTheGameScene(worldData: Game): Promise<{
-  story: string;
-  map: RoomPlanSchema;
-  narratorVoice: { voiceId: string };
-}> {
+export async function setTheGameScene(
+  worldData: Game
+): Promise<AIGeneratedGame> {
   const generatedGameStory = await generateGameStory(worldData);
 
   const [gameMap, narratorVoiceId] = await Promise.all([

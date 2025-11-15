@@ -16,12 +16,9 @@ export async function POST(req: NextRequest) {
     }
 
     // Create game
-    const game = gameStore.createGame(worldData);
+    const game = await gameStore.createGame(worldData);
 
-    // Trigger n8n story generation and wait for response
-    await triggerStoryGeneration(game);
-
-    triggerWorldAndStoryGeneration(game);
+    await triggerWorldAndStoryGeneration(game);
 
     return NextResponse.json({
       roomCode: game.roomCode,
@@ -74,11 +71,12 @@ async function triggerStoryGeneration(game: Game) {
 async function triggerWorldAndStoryGeneration(game: Game) {
   const result = await setTheGameScene(game);
 
-  console.log('RESULT', result);
+  console.log("RESULT", result);
 
   if (!result) {
     gameStore.updateGameStatus(game.roomCode, "in-progress");
   }
 
   gameStore.updateGameStatus(game.roomCode, "ready");
+  gameStore.addStoryAndMapToGame(game.roomCode, result);
 }
