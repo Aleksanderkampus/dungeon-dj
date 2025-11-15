@@ -1,26 +1,32 @@
+import { facilitatorAgent } from "@/lib/services/facilitator-service";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { text, voiceId } = body;
+    const { story, roomCode, narratorVoiceId } = body;
 
-    if (!text) {
-      return NextResponse.json(
-        { error: "Text is required" },
-        { status: 400 }
-      );
+    if (!story) {
+      return NextResponse.json({ error: "Story is required" }, { status: 400 });
     }
 
-    // Mock response - in real implementation, this would call ElevenLabs
-    // Return a mock audio URL and duration
-    const mockAudioUrl = "data:audio/mp3;base64,//uQx..."; // Empty audio data
-    const mockDuration = text.length * 50; // ~50ms per character as rough estimate
+    // Call facilitator agent service to generate the audio file
+    const audioBuffer = await facilitatorAgent({
+      story,
+      roomCode,
+      narratorVoiceId,
+    });
 
-    return NextResponse.json({
-      audioUrl: mockAudioUrl,
-      duration: mockDuration,
-      text,
+    // Convert Node.js Buffer to Uint8Array for NextResponse
+    const audioData = new Uint8Array(audioBuffer);
+
+    // Return the audio data as a binary response
+    return new NextResponse(audioData, {
+      status: 200,
+      headers: {
+        "Content-Type": "audio/mpeg",
+        "Content-Length": audioData.length.toString(),
+      },
     });
   } catch (error) {
     console.error("Error in TTS endpoint:", error);
