@@ -3,7 +3,8 @@
 import * as React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Volume2, VolumeX, Play, Pause } from "lucide-react";
+import { Volume2, VolumeX, Play, Pause, Loader2 } from "lucide-react";
+import { useAudioPlayer } from "@/hooks/use-audio-player";
 
 type IntroductionViewProps = {
   roomCode: string;
@@ -21,6 +22,28 @@ export function IntroductionView({ roomCode }: IntroductionViewProps) {
   const [currentSentenceIndex, setCurrentSentenceIndex] = React.useState(-1);
   const [isPlaying, setIsPlaying] = React.useState(false);
   const [isMuted, setIsMuted] = React.useState(false);
+  const [isLoadingAudio, setIsLoadingAudio] = React.useState(false);
+
+  // Initialize audio player
+  const audioPlayer = useAudioPlayer({
+    onEnded: () => {
+      // Move to next sentence when audio finishes
+      if (currentSentenceIndex < mockSentences.length - 1) {
+        setCurrentSentenceIndex(prev => prev + 1);
+      } else {
+        setIsPlaying(false);
+      }
+    },
+    onError: (error) => {
+      console.error("Audio playback error:", error);
+      // Continue to next sentence even on error
+      if (currentSentenceIndex < mockSentences.length - 1) {
+        setCurrentSentenceIndex(prev => prev + 1);
+      } else {
+        setIsPlaying(false);
+      }
+    },
+  });
 
   // Start the storytelling
   const handleStart = () => {
@@ -30,6 +53,9 @@ export function IntroductionView({ roomCode }: IntroductionViewProps) {
 
   // Toggle play/pause
   const handleTogglePlay = () => {
+    if (isPlaying) {
+      audioPlayer.pause();
+    }
     setIsPlaying(!isPlaying);
   };
 
@@ -38,23 +64,57 @@ export function IntroductionView({ roomCode }: IntroductionViewProps) {
     setIsMuted(!isMuted);
   };
 
-  // Auto-advance to next sentence with timing
+  // Sync mute state
   React.useEffect(() => {
-    if (!isPlaying) return;
+    if (isMuted !== audioPlayer.isMuted) {
+      audioPlayer.toggleMute();
+    }
+  }, [isMuted, audioPlayer]);
 
-    // Check if we've displayed all sentences
-    if (currentSentenceIndex >= mockSentences.length - 1) {
-      setIsPlaying(false);
-      return;
+  // Fetch and play TTS for current sentence
+  React.useEffect(() => {
+    if (!isPlaying || currentSentenceIndex === -1) return;
+
+    const currentSentence = mockSentences[currentSentenceIndex];
+
+    async function fetchAndPlayTTS() {
+      try {
+        setIsLoadingAudio(true);
+
+        const response = await fetch("/api/tts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            text: currentSentence,
+            voiceId: "mock-voice-id",
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch TTS audio");
+        }
+
+        const { audioUrl } = await response.json();
+        setIsLoadingAudio(false);
+
+        // Play the audio
+        await audioPlayer.play(audioUrl);
+      } catch (error) {
+        console.error("TTS fetch error:", error);
+        setIsLoadingAudio(false);
+        // Continue to next sentence after delay on error
+        setTimeout(() => {
+          if (currentSentenceIndex < mockSentences.length - 1) {
+            setCurrentSentenceIndex(prev => prev + 1);
+          } else {
+            setIsPlaying(false);
+          }
+        }, 2000);
+      }
     }
 
-    // Mock timing: 3 seconds per sentence (will be replaced with audio duration)
-    const timer = setTimeout(() => {
-      setCurrentSentenceIndex(prev => prev + 1);
-    }, 3000);
-
-    return () => clearTimeout(timer);
-  }, [isPlaying, currentSentenceIndex, mockSentences.length]);
+    fetchAndPlayTTS();
+  }, [currentSentenceIndex, isPlaying]);
 
   return (
     <div className="container mx-auto max-w-4xl space-y-6 p-4">
@@ -99,8 +159,14 @@ export function IntroductionView({ roomCode }: IntroductionViewProps) {
                   size="lg"
                   variant="outline"
                   onClick={handleTogglePlay}
+                  disabled={isLoadingAudio}
                 >
-                  {isPlaying ? (
+                  {isLoadingAudio ? (
+                    <>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      Loading...
+                    </>
+                  ) : isPlaying ? (
                     <>
                       <Pause className="mr-2 h-5 w-5" />
                       Pause
