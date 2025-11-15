@@ -18,9 +18,6 @@ export async function POST(req: NextRequest) {
     // Create game
     const game = gameStore.createGame(worldData);
 
-    // Trigger n8n story generation and wait for response
-    await triggerStoryGeneration(game);
-
     triggerWorldAndStoryGeneration(game);
 
     return NextResponse.json({
@@ -35,49 +32,11 @@ export async function POST(req: NextRequest) {
   }
 }
 
-async function triggerStoryGeneration(game: Game) {
-  try {
-    const n8nEndpoint =
-      process.env.N8N_WEBHOOK_URL ||
-      "http://localhost:5678/webhook/generate-story";
-
-    const response = await fetch(n8nEndpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        roomCode: game.roomCode,
-        ...game.worldData,
-      }),
-    });
-
-    if (!response.ok) {
-      console.error("n8n API error:", await response.text());
-      gameStore.updateGameStatus(game.roomCode, "error");
-      return;
-    }
-
-    // Parse the story from n8n response
-    const data = await response.json();
-
-    if (data.output) {
-      gameStore.setGeneratedStory(game.roomCode, data.output);
-    } else {
-      console.error("No story in n8n response");
-      gameStore.updateGameStatus(game.roomCode, "error");
-    }
-  } catch (error) {
-    console.error("Error calling n8n:", error);
-    gameStore.updateGameStatus(game.roomCode, "error");
-  }
-}
-
 async function triggerWorldAndStoryGeneration(game: Game) {
   const result = await setTheGameScene(game);
 
-  console.log('RESULT', result);
-
   if (!result) {
-    gameStore.updateGameStatus(game.roomCode, "in-progress");
+    gameStore.updateGameStatus(game.roomCode, "error");
   }
 
   gameStore.updateGameStatus(game.roomCode, "ready");
