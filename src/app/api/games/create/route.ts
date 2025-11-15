@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { gameStore } from "@/lib/game-store";
 import { Game } from "@/types/game";
+import { setTheGameScene } from "@/lib/services/story-generating-service";
 
 export async function POST(req: NextRequest) {
   try {
@@ -19,6 +20,8 @@ export async function POST(req: NextRequest) {
 
     // Trigger n8n story generation (async)
     //triggerStoryGeneration(game);
+
+    triggerWorldAndStoryGeneration(game);
 
     return NextResponse.json({
       roomCode: game.roomCode,
@@ -58,4 +61,16 @@ async function triggerStoryGeneration(game: Game) {
     // Mark as ready even if generation fails
     gameStore.updateGameStatus(game.roomCode, "ready");
   }
+}
+
+async function triggerWorldAndStoryGeneration(game: Game) {
+  const result = await setTheGameScene(game);
+
+  console.log('RESULT', result);
+
+  if (!result) {
+    gameStore.updateGameStatus(game.roomCode, "in-progress");
+  }
+
+  gameStore.updateGameStatus(game.roomCode, "ready");
 }
