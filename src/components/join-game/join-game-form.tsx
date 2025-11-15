@@ -49,7 +49,6 @@ async function verifyRoomCode(roomCode: string) {
   }
 
   const data = await response.json();
-  console.log("Verified room code:", data);
   return data;
 }
 
@@ -241,19 +240,11 @@ export function JoinGameForm() {
             <div />
           )}
           {step === "roomCode" ? (
-            <Button
-              type="button"
-              onClick={handleContinue}
-              disabled={isLoading}
-            >
+            <Button type="button" onClick={handleContinue} disabled={isLoading}>
               {isLoading ? "Loading..." : "Continue"}
             </Button>
           ) : (
-            <Button
-              type="submit"
-              form="join-game-form"
-              disabled={isLoading}
-            >
+            <Button type="submit" form="join-game-form" disabled={isLoading}>
               {isLoading ? "Loading..." : "Join Game"}
             </Button>
           )}

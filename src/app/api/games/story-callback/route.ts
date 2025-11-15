@@ -15,10 +15,7 @@ export async function POST(req: NextRequest) {
 
     const game = gameStore.getGame(roomCode);
     if (!game) {
-      return NextResponse.json(
-        { error: "Game not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Game not found" }, { status: 404 });
     }
 
     if (status === "success" && story) {
@@ -27,7 +24,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true });
     } else {
       // Mark as ready even if generation failed
-      gameStore.updateGameStatus(roomCode, "ready");
+      gameStore.updateGameStatus(roomCode, "error");
       return NextResponse.json(
         { error: "Story generation failed" },
         { status: 500 }
