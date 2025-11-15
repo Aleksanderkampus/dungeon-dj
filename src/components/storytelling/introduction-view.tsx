@@ -23,6 +23,7 @@ export function IntroductionView({ roomCode }: IntroductionViewProps) {
   const [isPlaying, setIsPlaying] = React.useState(false);
   const [isMuted, setIsMuted] = React.useState(false);
   const [isLoadingAudio, setIsLoadingAudio] = React.useState(false);
+  const [isComplete, setIsComplete] = React.useState(false);
 
   // Initialize audio player
   const audioPlayer = useAudioPlayer({
@@ -32,6 +33,7 @@ export function IntroductionView({ roomCode }: IntroductionViewProps) {
         setCurrentSentenceIndex(prev => prev + 1);
       } else {
         setIsPlaying(false);
+        setIsComplete(true);
       }
     },
     onError: (error) => {
@@ -41,6 +43,7 @@ export function IntroductionView({ roomCode }: IntroductionViewProps) {
         setCurrentSentenceIndex(prev => prev + 1);
       } else {
         setIsPlaying(false);
+        setIsComplete(true);
       }
     },
   });
@@ -194,10 +197,23 @@ export function IntroductionView({ roomCode }: IntroductionViewProps) {
             )}
           </div>
 
-          {/* Debug info (remove later) */}
-          <div className="mt-4 text-center text-sm text-muted-foreground">
-            Sentence {currentSentenceIndex + 1} of {mockSentences.length}
-          </div>
+          {/* Completion message */}
+          {isComplete && (
+            <div className="mt-6 text-center">
+              <p className="mb-4 text-lg font-medium text-green-600">
+                Introduction Complete!
+              </p>
+              <Button
+                size="lg"
+                onClick={() => {
+                  // TODO: Navigate to next section
+                  console.log("Continue to next section");
+                }}
+              >
+                Continue to Chapter 1
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
