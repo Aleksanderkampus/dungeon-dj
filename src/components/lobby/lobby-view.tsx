@@ -238,6 +238,21 @@ export function LobbyView({
           </Button>
         </div>
       )}
+
+      {/* Start Game Button - Only for host when story is ready */}
+      {playerId && currentPlayer?.isHost && game.status === "ready" && (
+        <div className="flex justify-center">
+          <Button
+            size="lg"
+            onClick={() => {
+              window.location.href = `/storytelling/${roomCode}`;
+            }}
+            className="w-full sm:w-auto"
+          >
+            Start Game
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
