@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Create game
-    const game = gameStore.createGame(worldData);
+    const game = await gameStore.createGame(worldData);
 
     triggerWorldAndStoryGeneration(game);
 
@@ -40,4 +40,5 @@ async function triggerWorldAndStoryGeneration(game: Game) {
   }
 
   gameStore.updateGameStatus(game.roomCode, "ready");
+  gameStore.addStoryAndMapToGame(game.roomCode, result);
 }

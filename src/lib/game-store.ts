@@ -3,7 +3,9 @@ import {
   CharacterSheet,
   Game,
   Player,
+  AIGeneratedGame
 } from "@/types/game";
+import { supabase } from "../lib/services/supabase";
 
 // Preserve game store across HMR in development
 const globalForGameStore = globalThis as unknown as {
@@ -44,18 +46,69 @@ class GameStore {
     return code;
   }
 
-  createGame(worldData: Game["worldData"]): Game {
+  async createGame(worldData: Game["worldData"]): Promise<Game> {
     const roomCode = this.generateRoomCode();
     const game: Game = {
       roomCode,
-      players: [],
       status: "generating",
       worldData,
-      createdAt: new Date(),
     };
 
+    const { error } = await supabase.from("games").insert({
+      room_code: roomCode,
+      status: game.status,
+      genre: worldData.genre,
+      team_background: worldData.teamBackground,
+      story_goal: worldData.storyGoal,
+      story_idea: worldData.storyIdea,
+      actions_per_session: worldData.actionsPerSession,
+    });
+
+    console.log("Supabase insert error:", error);
     this.games.set(roomCode, game);
     return game;
+  }
+
+  async addStoryAndMapToGame(
+    roomCode: string,
+    aiGeneratedGame: AIGeneratedGame
+  ) {
+    const { story, map, narratorVoice } = aiGeneratedGame;
+
+    const currentGame = this.games.get(roomCode);
+
+    if (!currentGame) {
+      throw new Error("No room exists");
+    }
+
+    const updatedGame = {
+      room_code: roomCode,
+      status: currentGame.status,
+      genre: currentGame.worldData.genre,
+      team_background: currentGame.worldData.teamBackground,
+      story_goal: currentGame.worldData.storyGoal,
+      story_idea: currentGame.worldData.storyIdea,
+      actions_per_session: currentGame.worldData.actionsPerSession,
+      story,
+      narrator_voice_id: narratorVoice.voiceId,
+      room_data: JSON.stringify(map),
+    };
+
+    this.games.set(roomCode, {
+      ...currentGame,
+      story,
+      narratorVoiceId: narratorVoice.voiceId,
+      roomData: JSON.stringify(map),
+    });
+
+    const { error } = await supabase
+      .from("games")
+      .update(updatedGame)
+      .eq("room_code", roomCode);
+
+    console.log("Supabase update error:", error);
+
+    return updatedGame;
   }
 
   getGame(roomCode: string): Game | undefined {
@@ -84,10 +137,10 @@ class GameStore {
     const game = this.games.get(roomCode);
     if (!game) return null;
 
-    const player = game.players.find((p) => p.id === playerId);
-    if (!player) return null;
+    // const player = game.players.find((p) => p.id === playerId);
+    // if (!player) return null;
 
-    player.isReady = isReady;
+    // player.isReady = isReady;
     this.games.set(roomCode, game);
     return game;
   }
@@ -105,7 +158,7 @@ class GameStore {
     const game = this.games.get(roomCode);
     if (!game) return null;
 
-    game.generatedStory = story;
+    game.story = story;
     game.status = "ready";
     this.games.set(roomCode, game);
     return game;
@@ -115,7 +168,7 @@ class GameStore {
     const game = this.games.get(roomCode);
     if (!game) return null;
 
-    game.players = game.players.filter((p) => p.id !== playerId);
+    // game.players = game.players.filter((p) => p.id !== playerId);
     this.games.set(roomCode, game);
     return game;
   }

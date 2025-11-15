@@ -38,13 +38,8 @@ Monster and Battle Rules:
 }
 
 export function assembleStoryUserPrompt(worldData: Game): string {
-  const {
-    genre,
-    teamBackground,
-    storyGoal,
-    storyDescription,
-    actionsPerSession,
-  } = worldData.worldData;
+  const { genre, teamBackground, storyGoal, storyIdea, actionsPerSession } =
+    worldData.worldData;
 
   return `
     
@@ -52,7 +47,7 @@ export function assembleStoryUserPrompt(worldData: Game): string {
 <team-background>${teamBackground}</team-background>
 <story-goal>${storyGoal}</story-goal>
 
-<story-idea>${storyDescription}</story-idea>
+<story-idea>${storyIdea}</story-idea>
 <actions-per-session>${actionsPerSession}</actions-per-session>
     `;
 }
