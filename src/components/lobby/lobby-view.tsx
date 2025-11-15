@@ -221,7 +221,7 @@ export function LobbyView({
 
       {/* Character Creation */}
       {playerId && currentPlayer && (
-        <CharacterCreationPanel player={currentPlayer} roomCode={roomCode} />
+        <CharacterCreationPanel player={currentPlayer} />
       )}
 
       {/* Ready Button */}

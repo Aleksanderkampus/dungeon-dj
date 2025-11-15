@@ -77,6 +77,13 @@ export async function POST(req: NextRequest) {
         characterSheet
       );
 
+      await gameStore.savePlayerCharacterToDatabase({
+        roomCode: normalizedRoomCode,
+        playerId,
+        sheet: characterSheet,
+        background: trimmedBackground,
+      });
+
       return NextResponse.json({ characterSheet });
     } catch (generationError) {
       const errorMessage =
