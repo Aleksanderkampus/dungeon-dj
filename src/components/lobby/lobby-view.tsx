@@ -200,7 +200,7 @@ export function LobbyView({ initialGame, playerId: initialPlayerId }: LobbyViewP
       <PlayerList players={game.players} />
 
       {/* Ready Button */}
-      {playerId && currentPlayer && !currentPlayer.isHost && (
+      {playerId && currentPlayer && (
         <div className="flex justify-center">
           <Button
             size="lg"
