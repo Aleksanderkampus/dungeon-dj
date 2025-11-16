@@ -185,7 +185,9 @@ export function LobbyView({
                 <QRCode
                   size={256}
                   style={{ height: "auto", width: "100%" }}
-                  value={`${process.env.NEXT_PUBLIC_APP_URL || ""}/join-game?roomCode=${game.roomCode}`}
+                  value={`${
+                    process.env.NEXT_PUBLIC_APP_URL || ""
+                  }/join-game?roomCode=${game.roomCode}`}
                   viewBox="0 0 256 256"
                 />
               </div>
@@ -270,7 +272,7 @@ export function LobbyView({
         <div className="flex justify-center">
           <Button
             size="lg"
-            onClick={() => router.push(`/storytelling/${roomCode}`)}
+            onClick={() => (window.location.href = `/storytelling/${roomCode}`)}
             className="w-full sm:w-auto"
           >
             Start Game
