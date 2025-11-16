@@ -6,20 +6,21 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Volume2, VolumeX, Play, Pause, Loader2 } from "lucide-react";
 import { useAudioPlayer } from "@/hooks/use-audio-player";
-import { parseIntroduction, splitIntoSentences } from "@/lib/story-parser";
+import { splitIntoSentences } from "@/lib/story-parser";
 
 type IntroductionViewProps = {
   roomCode: string;
-  story: string;
-  narratorVoiceId: string;
 };
 
-// API function to fetch TTS audio
+type TTSResponse = {
+  audioBlob: Blob;
+  text: string;
+};
+
+// API function to fetch TTS audio and text
 async function fetchTTSAudio(params: {
   roomCode: string;
-  story: string;
-  narratorVoiceId: string;
-}): Promise<Blob> {
+}): Promise<TTSResponse> {
   const response = await fetch("/api/tts", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -30,44 +31,48 @@ async function fetchTTSAudio(params: {
     throw new Error(`TTS API error: ${response.status}`);
   }
 
-  const audioBlob = await response.blob();
+  const data = await response.json();
 
-  if (!audioBlob || audioBlob.size === 0) {
-    throw new Error("No audio data received from TTS API");
+  if (!data.audio || !data.text) {
+    throw new Error("Invalid response from TTS API");
   }
 
-  return audioBlob;
+  // Decode base64 audio to Blob
+  const audioData = atob(data.audio);
+  const audioArray = new Uint8Array(audioData.length);
+  for (let i = 0; i < audioData.length; i++) {
+    audioArray[i] = audioData.charCodeAt(i);
+  }
+  const audioBlob = new Blob([audioArray], { type: "audio/mpeg" });
+
+  return {
+    audioBlob,
+    text: data.text,
+  };
 }
 
-export function IntroductionView({
-  roomCode,
-  story,
-  narratorVoiceId,
-}: IntroductionViewProps) {
-  const introductionSentences = parseIntroduction(story);
-  const sectionSentences = splitIntoSentences(introductionSentences);
+export function IntroductionView({ roomCode }: IntroductionViewProps) {
 
   const [currentSentenceIndex, setCurrentSentenceIndex] = React.useState(-1);
   const [isPlaying, setIsPlaying] = React.useState(false);
   const [isMuted, setIsMuted] = React.useState(false);
   const [isComplete, setIsComplete] = React.useState(false);
 
-  // Combine all sentences for TTS
-  const fullStory = sectionSentences.join(" ");
-
-  // Fetch TTS audio with React Query (starts immediately on mount)
-  const { data: audioBlob, isLoading } = useQuery({
-    queryKey: ["tts", roomCode, fullStory],
-    queryFn: () =>
-      fetchTTSAudio({
-        roomCode,
-        story: fullStory,
-        narratorVoiceId,
-      }),
+  // Fetch TTS audio and text with React Query (starts immediately on mount)
+  const { data: ttsData, isLoading } = useQuery({
+    queryKey: ["tts", roomCode],
+    queryFn: () => fetchTTSAudio({ roomCode }),
     enabled: true, // Fetch immediately on mount
     staleTime: Infinity, // Audio doesn't go stale
     gcTime: 30 * 60 * 1000, // Keep in cache for 30 minutes
   });
+
+  // Extract audio blob and split text into sentences
+  const audioBlob = ttsData?.audioBlob;
+  const sectionSentences = React.useMemo(() => {
+    if (!ttsData?.text) return [];
+    return splitIntoSentences(ttsData.text);
+  }, [ttsData?.text]);
 
   // Initialize audio player
   const audioPlayer = useAudioPlayer({

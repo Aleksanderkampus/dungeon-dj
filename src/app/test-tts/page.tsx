@@ -33,6 +33,7 @@ export default function TestTTSPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isFirstCall, setIsFirstCall] = useState(true);
+  const [generatedText, setGeneratedText] = useState<string | null>(null);
 
   const handleGenerate = async () => {
     if (!text.trim()) {
@@ -47,6 +48,7 @@ export default function TestTTSPage() {
 
     setIsLoading(true);
     setAudioUrl(null);
+    setGeneratedText(null);
 
     try {
       const response = await fetch("/api/tts/test", {
@@ -62,10 +64,20 @@ export default function TestTTSPage() {
         throw new Error(error.error || "Failed to generate audio");
       }
 
-      // Create a blob from the response
-      const blob = await response.blob();
+      // Parse JSON response
+      const data = await response.json();
+
+      // Decode base64 audio and create blob URL
+      const audioData = atob(data.audio);
+      const audioArray = new Uint8Array(audioData.length);
+      for (let i = 0; i < audioData.length; i++) {
+        audioArray[i] = audioData.charCodeAt(i);
+      }
+      const blob = new Blob([audioArray], { type: "audio/mpeg" });
       const url = URL.createObjectURL(blob);
+
       setAudioUrl(url);
+      setGeneratedText(data.text);
       toast.success("Audio generated successfully!");
     } catch (error) {
       console.error("Error generating audio:", error);
@@ -160,6 +172,14 @@ export default function TestTTSPage() {
           >
             {isLoading ? "Generating Audio..." : "Generate Speech"}
           </Button>
+
+          {/* Generated Text */}
+          {generatedText && (
+            <div className="space-y-2 p-4 bg-muted rounded-lg">
+              <Label>Text Sent to TTS</Label>
+              <p className="text-sm whitespace-pre-wrap">{generatedText}</p>
+            </div>
+          )}
 
           {/* Audio Player */}
           {audioUrl && (

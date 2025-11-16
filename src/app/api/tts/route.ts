@@ -1,37 +1,42 @@
 import { facilitatorAgent } from "@/lib/services/facilitator-service";
+import { gameStore } from "@/lib/game-store";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { story, roomCode, narratorVoiceId } = body;
+    const { roomCode } = body;
 
-    if (!story) {
-      return NextResponse.json({ error: "Story is required" }, { status: 400 });
+    if (!roomCode) {
+      return NextResponse.json(
+        { error: "Room code is required" },
+        { status: 400 }
+      );
     }
 
-    // Call facilitator agent service to generate the audio file
-    const audioBuffer = await facilitatorAgent({
-      story,
-      roomCode,
-      narratorVoiceId,
-    });
+    // Get game from store
+    const game = await gameStore.getGame(roomCode);
 
-    // Convert Node.js Buffer to Uint8Array for NextResponse
-    const audioData = new Uint8Array(audioBuffer);
+    if (!game) {
+      return NextResponse.json({ error: "Game not found" }, { status: 404 });
+    }
 
-    // Return the audio data as a binary response
-    return new NextResponse(audioData, {
-      status: 200,
-      headers: {
-        "Content-Type": "audio/mpeg",
-        "Content-Length": audioData.length.toString(),
-      },
+    // Call facilitator agent service to generate audio and get text
+    // Pass undefined as second parameter to trigger first call (introduction)
+    const response = await facilitatorAgent(game);
+
+    // Return JSON with base64 audio and text
+    return NextResponse.json({
+      audio: response.audio,
+      text: response.text,
     });
   } catch (error) {
     console.error("Error in TTS endpoint:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      {
+        error: "Internal server error",
+        details: (error as Error).message,
+      },
       { status: 500 }
     );
   }
