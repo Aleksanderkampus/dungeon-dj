@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Volume2, VolumeX, Play, Pause, Loader2 } from "lucide-react";
 import { useAudioPlayer } from "@/hooks/use-audio-player";
 import { splitIntoSentences } from "@/lib/story-parser";
+import { GridMapVisualization } from "@/components/grid-map/grid-map-visualization";
+import { Game } from "@/types/game";
 
 type IntroductionViewProps = {
   roomCode: string;
@@ -52,11 +54,22 @@ async function fetchTTSAudio(params: {
 }
 
 export function IntroductionView({ roomCode }: IntroductionViewProps) {
-
   const [currentSentenceIndex, setCurrentSentenceIndex] = React.useState(-1);
   const [isPlaying, setIsPlaying] = React.useState(false);
   const [isMuted, setIsMuted] = React.useState(false);
   const [isComplete, setIsComplete] = React.useState(false);
+
+  // Fetch game data to get room information
+  const { data: gameData } = useQuery({
+    queryKey: ["game", roomCode],
+    queryFn: async () => {
+      const response = await fetch(`/api/games/${roomCode}`);
+      if (!response.ok) throw new Error("Failed to fetch game data");
+      const data = await response.json();
+      return data.game as Game;
+    },
+    staleTime: Infinity,
+  });
 
   // Fetch TTS audio and text with React Query (starts immediately on mount)
   const { data: ttsData, isLoading } = useQuery({
@@ -149,40 +162,65 @@ export function IntroductionView({ roomCode }: IntroductionViewProps) {
     audioPlayer.duration,
   ]);
 
+  // Get the first room's grid map for visualization
+  const firstRoom = gameData?.roomData
+    ? JSON.parse(gameData.roomData).rooms[0]
+    : null;
+
   return (
-    <div className="container mx-auto max-w-4xl space-y-6 p-4">
+    <div className="container mx-auto max-w-7xl space-y-6 p-4">
       <Card>
         <CardContent className="p-8">
-          <div className="mb-8">
-            <h2 className="mb-4 text-2xl font-bold">Introduction</h2>
+          <h2 className="mb-6 text-2xl font-bold">Introduction</h2>
 
-            {/* Story text display */}
-            <div className="min-h-[200px] space-y-2 text-lg leading-relaxed">
-              {currentSentenceIndex === -1 ? (
-                <p className="text-muted-foreground italic">
-                  Press start to begin the adventure...
-                </p>
+          {/* Two-column layout: Story text + Grid map */}
+          <div className="grid gap-8 lg:grid-cols-2">
+            {/* Left column: Story text */}
+            <div className="space-y-4">
+              {/* Story text display */}
+              <div className="min-h-[300px] space-y-2 text-lg leading-relaxed">
+                {currentSentenceIndex === -1 ? (
+                  <p className="text-muted-foreground italic">
+                    Press start to begin the adventure...
+                  </p>
+                ) : (
+                  sectionSentences
+                    .slice(0, currentSentenceIndex + 1)
+                    .map((sentence, idx) => (
+                      <span
+                        key={idx}
+                        className={
+                          idx === currentSentenceIndex
+                            ? "animate-in fade-in duration-300 font-medium"
+                            : "text-muted-foreground"
+                        }
+                      >
+                        {sentence}{" "}
+                      </span>
+                    ))
+                )}
+              </div>
+            </div>
+
+            {/* Right column: Grid map */}
+            <div className="flex items-start">
+              {firstRoom?.gridMap ? (
+                <GridMapVisualization
+                  gridMap={firstRoom.gridMap}
+                  className="w-full"
+                />
               ) : (
-                sectionSentences
-                  .slice(0, currentSentenceIndex + 1)
-                  .map((sentence, idx) => (
-                    <span
-                      key={idx}
-                      className={
-                        idx === currentSentenceIndex
-                          ? "animate-in fade-in duration-300 font-medium"
-                          : "text-muted-foreground"
-                      }
-                    >
-                      {sentence}{" "}
-                    </span>
-                  ))
+                <div className="flex h-full w-full items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/20 p-8">
+                  <p className="text-center text-sm text-muted-foreground">
+                    Loading room map...
+                  </p>
+                </div>
               )}
             </div>
           </div>
 
           {/* Controls */}
-          <div className="flex items-center justify-center gap-4">
+          <div className="mt-8 flex items-center justify-center gap-4">
             {currentSentenceIndex === -1 ? (
               <Button size="lg" onClick={handleStart} disabled={isLoading}>
                 {isLoading ? (

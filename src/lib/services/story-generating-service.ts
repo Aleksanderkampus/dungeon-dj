@@ -4,6 +4,7 @@ import OpenAI from "openai";
 import { AIGeneratedGame, Game, RoomPlanSchema } from "@/types/game";
 import "dotenv/config";
 import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
+import { generateAllRoomGrids } from "../grid-generator";
 
 import {
   assembleStorySystemPrompt,
@@ -34,9 +35,14 @@ export async function setTheGameScene(
     generateNarratorVoiceDescription(generatedGameStory),
   ]);
 
+  // Generate 9x9 grid maps for each room with NPCs and equipment positioned
+  const roomsWithGrids = generateAllRoomGrids(gameMap.rooms);
+
   return {
     story: generatedGameStory,
-    map: gameMap,
+    map: {
+      rooms: roomsWithGrids,
+    },
     narratorVoice: {
       voiceId: narratorVoiceId,
     },
