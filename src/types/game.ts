@@ -36,7 +36,6 @@ export type Player = {
   id: string;
   characterName: string;
   isReady: boolean;
-  isHost: boolean;
   race?: string;
   class?: string;
   skills?: string[];

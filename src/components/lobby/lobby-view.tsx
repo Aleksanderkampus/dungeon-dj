@@ -270,7 +270,7 @@ export function LobbyView({
         <div className="flex justify-center">
           <Button
             size="lg"
-            onClick={() => router.push(`/storytelling/${roomCode}`)}
+            onClick={() => window.location.href = `/storytelling/${roomCode}`}
             className="w-full sm:w-auto"
           >
             Start Game

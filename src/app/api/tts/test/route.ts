@@ -40,6 +40,7 @@ export async function POST(request: NextRequest) {
       // If isFirstCall is false, use existing game_state from database
       gameState: isFirstCall ? "" : data?.game_state || "",
       roomData: data?.room_data || "",
+      players: data?.players || [],
     };
 
     console.log(
