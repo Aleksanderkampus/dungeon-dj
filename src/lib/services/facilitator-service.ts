@@ -50,8 +50,6 @@ export async function facilitatorAgent(
 ): Promise<FacilitatorResponse> {
   let gameState = game.gameState;
 
-  const roomPlan = JSON.parse(game.roomData || "{}") as RoomPlanSchema;
-
   if (!gameState) {
     const storyheadings = await generateHeadings(game);
     gameState = {
