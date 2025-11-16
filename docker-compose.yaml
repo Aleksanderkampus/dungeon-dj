@@ -11,7 +11,7 @@ services:
     container_name: dungeon-dj-app
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "3001:3001"
     environment:
       # Node Environment
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
