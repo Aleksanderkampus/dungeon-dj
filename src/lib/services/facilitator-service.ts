@@ -18,6 +18,7 @@ import {
   ChatCompletionTool,
 } from "openai/resources";
 import { getFacilitatorTools } from "../prompts/tools/get-facilitator-tools";
+import { movePlayerOnGrid, initializePlayerPositions } from "../grid-generator";
 
 dotenv.config();
 
@@ -92,7 +93,7 @@ async function respond(
     throw new Error("Narrator voice ID is missing in the game data");
   }
 
-  // Get current room data
+  // Get current room data and initialize player positions if needed
   const currentSection = getNarratedSelection(gameState);
   let currentRoom = null;
 
@@ -100,6 +101,27 @@ async function respond(
     try {
       const roomPlan: RoomPlanSchema = JSON.parse(game.roomData);
       currentRoom = roomPlan.rooms[currentSection.id];
+
+      // Initialize player positions if not already done
+      if (currentRoom?.gridMap && !currentRoom.gridMap.playerPositions) {
+        const players = game.players.map((p) => ({
+          id: p.id,
+          characterName: p.characterName,
+        }));
+        currentRoom.gridMap = initializePlayerPositions(
+          currentRoom.gridMap,
+          players
+        );
+
+        // Update the room data with initialized positions
+        roomPlan.rooms[currentSection.id] = currentRoom;
+        game.roomData = JSON.stringify(roomPlan);
+        await gameStore.updateGameStateAndRoomData(
+          game.roomCode,
+          gameState,
+          game.roomData
+        );
+      }
     } catch (error) {
       console.error("Error parsing room data in respond:", error);
     }
@@ -215,6 +237,106 @@ async function provideEquipment(
   };
 }
 
+async function movePlayer(
+  game: Game,
+  gameState: GameState,
+  currentSectionIndex: number,
+  toolCall: ChatCompletionMessageFunctionToolCall
+): Promise<FacilitatorResponse> {
+  const { player_name, target_type, equipment_name, message } = JSON.parse(
+    toolCall.function.arguments
+  );
+
+  console.log("[movePlayer] Moving player:", {
+    playerName: player_name,
+    targetType: target_type,
+    equipmentName: equipment_name,
+    availablePlayers: game.players.map((p) => p.characterName),
+  });
+
+  gameState.storySections[currentSectionIndex].interactionsTakenInTheRoom.push({
+    role: "assistant",
+    content: message,
+  });
+
+  // Parse roomData and update player position
+  if (!game.roomData) {
+    throw new Error("Room data is missing in the game data");
+  }
+
+  const roomPlan: RoomPlanSchema = JSON.parse(game.roomData);
+
+  if (!roomPlan.rooms[currentSectionIndex]?.gridMap) {
+    throw new Error("Grid map is missing for current room");
+  }
+
+  // Determine target based on target_type
+  let target:
+    | {
+        type: "npc" | "equipment" | "wall";
+        equipmentName?: string;
+      }
+    | undefined;
+
+  if (target_type === "npc") {
+    target = { type: "npc" };
+  } else if (target_type === "equipment" && equipment_name) {
+    target = { type: "equipment", equipmentName: equipment_name };
+  } else if (target_type === "wall") {
+    target = { type: "wall" };
+  }
+  // If target_type is "random" or undefined, target will be undefined (default random)
+
+  // Move the player on the grid
+  const updatedGridMap = movePlayerOnGrid(
+    roomPlan.rooms[currentSectionIndex].gridMap!,
+    player_name,
+    target
+  );
+
+  console.log("[movePlayer] Player moved successfully:", {
+    playerName: player_name,
+    oldPosition: roomPlan.rooms[
+      currentSectionIndex
+    ].gridMap!.playerPositions?.find(
+      (p) => p.characterName.toLowerCase() === player_name.toLowerCase()
+    )?.position,
+    newPosition: updatedGridMap.playerPositions?.find(
+      (p) => p.characterName.toLowerCase() === player_name.toLowerCase()
+    )?.position,
+  });
+
+  // Update the room's grid map
+  roomPlan.rooms[currentSectionIndex].gridMap = updatedGridMap;
+
+  // Update roomData string
+  const updatedRoomData = JSON.stringify(roomPlan);
+
+  if (!game.narratorVoiceId) {
+    throw new Error("Narrator voice ID is missing in the game data");
+  }
+
+  // Get current room data after movement
+  let currentRoom = roomPlan.rooms[currentSectionIndex];
+
+  // Update both game state and room data in database
+  const [audioBuffer] = await Promise.all([
+    createAudioStreamFromText(game.narratorVoiceId, message),
+    gameStore.updateGameStateAndRoomData(
+      game.roomCode,
+      gameState,
+      updatedRoomData
+    ),
+  ]);
+
+  return {
+    audio: audioBuffer.toString("base64"),
+    text: message,
+    currentRoom,
+    currentSectionId: currentSectionIndex,
+  };
+}
+
 export async function facilitatorAgent(
   game: Game,
   text?: string
@@ -236,7 +358,8 @@ export async function facilitatorAgent(
 
   const tools: ChatCompletionTool[] = getFacilitatorTools(
     game.roomData || "{}",
-    currentSection.id
+    currentSection.id,
+    game.players.map((p) => p.characterName)
   );
 
   const response = await openai.chat.completions.create({
@@ -295,6 +418,8 @@ export async function facilitatorAgent(
         currentSection.id,
         toolCalls[0]
       );
+    case "move_player":
+      return await movePlayer(game, gameState, currentSection.id, toolCalls[0]);
 
     default:
       break;
