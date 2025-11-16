@@ -8,7 +8,6 @@ import { Volume2, VolumeX, Play, Pause, Loader2 } from "lucide-react";
 import { useAudioPlayer } from "@/hooks/use-audio-player";
 import { splitIntoSentences } from "@/lib/story-parser";
 import { GridMapVisualization } from "@/components/grid-map/grid-map-visualization";
-import { Game } from "@/types/game";
 import { base64ToAudioBlob } from "@/lib/audio-utils";
 import { SpeechToTextRecorder } from "./speech-to-text-recorder";
 
@@ -19,6 +18,8 @@ type IntroductionViewProps = {
 type TTSResponse = {
   audioBlob: Blob;
   text: string;
+  currentRoom?: any;
+  currentSectionId?: number;
 };
 
 async function fetchTTSAudio(params: {
@@ -43,6 +44,8 @@ async function fetchTTSAudio(params: {
   return {
     audioBlob: base64ToAudioBlob(data.audio),
     text: data.text,
+    currentRoom: data.currentRoom,
+    currentSectionId: data.currentSectionId,
   };
 }
 
@@ -53,18 +56,8 @@ export function IntroductionView({ roomCode }: IntroductionViewProps) {
   const [isComplete, setIsComplete] = React.useState(false);
   const [narrationText, setNarrationText] = React.useState("");
   const [audioBlob, setAudioBlob] = React.useState<Blob | null>(null);
-
-  // Fetch game data to get room information
-  const { data: gameData } = useQuery({
-    queryKey: ["game", roomCode],
-    queryFn: async () => {
-      const response = await fetch(`/api/games/${roomCode}`);
-      if (!response.ok) throw new Error("Failed to fetch game data");
-      const data = await response.json();
-      return data.game as Game;
-    },
-    staleTime: Infinity,
-  });
+  const [currentRoom, setCurrentRoom] = React.useState<any>(null);
+  const [currentSectionId, setCurrentSectionId] = React.useState<number>(0);
 
   // Fetch TTS audio and text with React Query (starts immediately on mount)
   const { data: ttsData, isLoading } = useQuery({
@@ -79,9 +72,13 @@ export function IntroductionView({ roomCode }: IntroductionViewProps) {
     if (!ttsData) return;
     setNarrationText(ttsData.text);
     setAudioBlob(ttsData.audioBlob);
+    setCurrentRoom(ttsData.currentRoom);
+    setCurrentSectionId(ttsData.currentSectionId ?? 0);
     setCurrentSentenceIndex(-1);
     setIsComplete(false);
     setIsPlaying(false);
+    console.log("🗺️ TTS Data loaded - Section:", ttsData.currentSectionId);
+    console.log("Room:", ttsData.currentRoom);
   }, [ttsData]);
 
   // Extract audio blob and split text into sentences
@@ -161,9 +158,22 @@ export function IntroductionView({ roomCode }: IntroductionViewProps) {
   }, [isPlaying, currentSentenceIndex, sectionSentences, audioPlayer.duration]);
 
   const handleFacilitatorResponse = React.useCallback(
-    (payload: { audioBlob: Blob; text: string }) => {
+    (payload: {
+      audioBlob: Blob;
+      text: string;
+      currentRoom?: any;
+      currentSectionId?: number;
+    }) => {
       setNarrationText(payload.text);
       setAudioBlob(payload.audioBlob);
+      if (payload.currentRoom) {
+        setCurrentRoom(payload.currentRoom);
+        setCurrentSectionId(payload.currentSectionId ?? 0);
+        console.log(
+          "🗺️ Room updated via response - Section:",
+          payload.currentSectionId
+        );
+      }
       setCurrentSentenceIndex(0);
       setIsComplete(false);
       setIsPlaying(true);
@@ -171,11 +181,6 @@ export function IntroductionView({ roomCode }: IntroductionViewProps) {
     },
     [audioPlayer]
   );
-
-  // Get the first room's grid map for visualization
-  const firstRoom = gameData?.roomData
-    ? JSON.parse(gameData.roomData).rooms[0]
-    : null;
 
   return (
     <div className="container mx-auto max-w-7xl space-y-6 p-4">
@@ -214,15 +219,22 @@ export function IntroductionView({ roomCode }: IntroductionViewProps) {
 
             {/* Right column: Grid map */}
             <div className="flex items-start">
-              {firstRoom?.gridMap ? (
-                <GridMapVisualization
-                  gridMap={firstRoom.gridMap}
-                  className="w-full"
-                />
+              {!isLoading && currentRoom?.gridMap ? (
+                <div
+                  key={currentSectionId}
+                  className="w-full animate-in fade-in duration-500"
+                >
+                  <GridMapVisualization
+                    gridMap={currentRoom.gridMap}
+                    className="w-full"
+                  />
+                </div>
               ) : (
                 <div className="flex h-full w-full items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/20 p-8">
                   <p className="text-center text-sm text-muted-foreground">
-                    Loading room map...
+                    {isLoading
+                      ? "Loading room map..."
+                      : "No room map available"}
                   </p>
                 </div>
               )}

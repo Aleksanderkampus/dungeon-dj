@@ -19,7 +19,12 @@ async function blobToBase64(blob: Blob): Promise<string> {
 
 type SpeechToTextRecorderProps = {
   roomCode: string;
-  onResponse?: (payload: { audioBlob: Blob; text: string }) => void;
+  onResponse?: (payload: {
+    audioBlob: Blob;
+    text: string;
+    currentRoom?: any;
+    currentSectionId?: number;
+  }) => void;
 };
 
 type RecorderStatus = "idle" | "recording" | "transcribing" | "responding";
@@ -52,7 +57,12 @@ export function SpeechToTextRecorder({
       }
 
       const audioBlob = base64ToAudioBlob(data.audio);
-      onResponse?.({ audioBlob, text: data.text });
+      onResponse?.({
+        audioBlob,
+        text: data.text,
+        currentRoom: data.currentRoom,
+        currentSectionId: data.currentSectionId,
+      });
       toast.success("Facilitator responded");
     } catch (error) {
       console.error("[speech-to-text] Facilitator error:", error);
