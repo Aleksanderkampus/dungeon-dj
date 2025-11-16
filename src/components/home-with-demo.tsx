@@ -22,11 +22,11 @@ export function HomeWithDemo() {
         title="DUNGEON DJ DEMO"
         description="Welcome to Dungeon DJ - an AI-powered tabletop RPG experience with voice narration, dynamic grid maps, and interactive gameplay. Create epic adventures with your friends!"
         link={{
-          url: "https://www.youtube.com/watch?v=7yt_zdeBrYY", // Replace with your actual demo link
+          url: "https://www.youtube.com/embed/mHBjM2CeEgo", // Replace with your actual demo link
           label: "Check out our video demo",
         }}
         video={{
-          url: "https://www.youtube.com/watch?v=7yt_zdeBrYY", // Replace with your actual video
+          url: "https://www.youtube.com/embed/mHBjM2CeEgo", // Replace with your actual video
           // thumbnail: "/demo-thumbnail.jpg", // Optional: Add your thumbnail
         }}
         dismissible={true}
