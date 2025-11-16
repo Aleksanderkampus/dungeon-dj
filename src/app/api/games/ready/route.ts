@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const game = gameStore.updatePlayerReady(
+    const game = await gameStore.updatePlayerReady(
       roomCode.toUpperCase(),
       playerId,
       isReady

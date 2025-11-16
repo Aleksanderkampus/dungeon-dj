@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const game = gameStore.getGame(roomCode);
+    const game = await gameStore.getGame(roomCode);
     if (!game) {
       return NextResponse.json({ error: "Game not found" }, { status: 404 });
     }

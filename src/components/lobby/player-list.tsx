@@ -10,11 +10,11 @@ import {
 } from "@/components/ui/card";
 import { CheckCircle2, Circle, Crown } from "lucide-react";
 
-type PlayerListProps = {
-  players: Player[];
-};
+interface PlayerListProps {
+  players?: Player[];
+}
 
-export function PlayerList({ players }: PlayerListProps) {
+export function PlayerList({ players = [] }: PlayerListProps) {
   return (
     <Card>
       <CardHeader>

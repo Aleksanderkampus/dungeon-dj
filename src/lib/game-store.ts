@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import {
   CharacterGenerationStatus,
   CharacterSheet,
@@ -139,16 +140,47 @@ class GameStore {
   }
 
   async getGame(roomCode: string): Promise<Game | undefined> {
+    const cached = this.games.get(roomCode);
+    if (cached) {
+      return cached;
+    }
+
     const { data, error } = await supabase
       .from("games")
       .select("*")
       .eq("room_code", roomCode)
-      .single();
+      .maybeSingle();
+
+    if (!data || error) {
+      console.error("Failed to fetch game", roomCode, error);
+      return undefined;
+    }
+
+    const { data: playerRows, error: playersError } = await supabase
+      .from("players")
+      .select("*")
+      .eq("game_id", data.id);
+
+    if (playersError) {
+      console.error("Failed to fetch players", roomCode, playersError);
+    }
+
+    const players: Player[] = (playerRows ?? []).map((row) => ({
+      id:
+        row.player_id?.toString?.() ??
+        row.id?.toString?.() ??
+        randomUUID(),
+      characterName: row.character_name ?? row.name ?? "Unknown Adventurer",
+      isReady: Boolean(row.is_ready),
+      characterBackground: row.backstory ?? "",
+      characterGenerationStatus: row.character_sheet ? "ready" : "idle",
+      characterSheet: row.character_sheet ?? undefined,
+    }));
 
     const game: Game = {
       roomCode: data.room_code,
       status: data.status,
-      players: [],
+      players,
       story: data.story,
       narratorVoiceId: data.narrator_voice_id,
       worldData: {
@@ -156,17 +188,20 @@ class GameStore {
         teamBackground: data.team_background,
         storyGoal: data.story_goal,
         storyIdea: data.story_idea,
-        facilitatorPersona: "",
-        facilitatorVoice: "",
+        facilitatorPersona: data.facilitator_persona ?? "",
+        facilitatorVoice: data.facilitator_voice ?? "",
         actionsPerSession: data.actions_per_session,
       },
       roomData: data.room_data,
       gameState: data.game_state,
+      supabaseId: data.id,
     };
+
+    this.games.set(roomCode, game);
     return game;
   }
 
-  addPlayer(roomCode: string, player: Player): Game | null {
+  async addPlayer(roomCode: string, player: Player): Promise<Game | null> {
     const game = this.games.get(roomCode);
     if (!game) return null;
 
@@ -177,14 +212,25 @@ class GameStore {
 
     game.players.push(normalizedPlayer);
     this.games.set(roomCode, game);
+
+    if (game.supabaseId) {
+      await supabase.from("players").insert({
+        game_id: game.supabaseId,
+        player_id: normalizedPlayer.id,
+        character_name: normalizedPlayer.characterName,
+        is_ready: normalizedPlayer.isReady,
+        backstory: normalizedPlayer.characterBackground,
+      });
+    }
+
     return game;
   }
 
-  updatePlayerReady(
+  async updatePlayerReady(
     roomCode: string,
     playerId: string,
     isReady: boolean
-  ): Game | null {
+  ): Promise<Game | null> {
     const game = this.games.get(roomCode);
     if (!game) return null;
 
@@ -193,6 +239,15 @@ class GameStore {
 
     player.isReady = isReady;
     this.games.set(roomCode, game);
+
+    if (game.supabaseId) {
+      await supabase
+        .from("players")
+        .update({ is_ready: isReady })
+        .eq("game_id", game.supabaseId)
+        .eq("player_id", playerId);
+    }
+
     return game;
   }
 
