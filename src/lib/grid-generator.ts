@@ -212,3 +212,180 @@ export function isPositionValid(
   // Check if empty
   return cells[y][x].type === "empty";
 }
+
+/**
+ * Initialize player positions at spawn point for all players
+ */
+export function initializePlayerPositions(
+  gridMap: RoomGridMap,
+  players: Array<{ id: string; characterName: string }>
+): RoomGridMap {
+  // Check for duplicate player names (case-insensitive)
+  const nameSet = new Set<string>();
+  const duplicates: string[] = [];
+
+  players.forEach((player) => {
+    const lowerName = player.characterName.toLowerCase();
+    if (nameSet.has(lowerName)) {
+      duplicates.push(player.characterName);
+    }
+    nameSet.add(lowerName);
+  });
+
+  if (duplicates.length > 0) {
+    console.warn(
+      `[initializePlayerPositions] Duplicate player names detected: ${duplicates.join(
+        ", "
+      )}. This may cause issues with movement.`
+    );
+  }
+
+  const playerPositions = players.map((player) => ({
+    playerId: player.id,
+    characterName: player.characterName,
+    position: { ...gridMap.playerSpawnPosition },
+  }));
+
+  return {
+    ...gridMap,
+    playerPositions,
+  };
+}
+
+/**
+ * Calculate position closer to a target (NPC, equipment, or wall)
+ */
+function calculateTargetPosition(
+  gridMap: RoomGridMap,
+  currentPos: GridPosition,
+  target: "npc" | "equipment" | "wall",
+  equipmentName?: string
+): GridPosition {
+  const { width, height } = gridMap;
+
+  if (target === "npc") {
+    // Move 1-2 steps closer to NPC
+    const npcPos = gridMap.npcPosition;
+    const dx = Math.sign(npcPos.x - currentPos.x);
+    const dy = Math.sign(npcPos.y - currentPos.y);
+    return {
+      x: Math.max(0, Math.min(width - 1, currentPos.x + dx * 2)),
+      y: Math.max(0, Math.min(height - 1, currentPos.y + dy * 2)),
+    };
+  }
+
+  if (target === "equipment" && equipmentName) {
+    // Move closer to specific equipment
+    const equipmentPos = gridMap.equipmentPositions.find(
+      (eq) => eq.equipmentName === equipmentName
+    );
+    if (equipmentPos) {
+      const dx = Math.sign(equipmentPos.position.x - currentPos.x);
+      const dy = Math.sign(equipmentPos.position.y - currentPos.y);
+      return {
+        x: Math.max(0, Math.min(width - 1, currentPos.x + dx * 2)),
+        y: Math.max(0, Math.min(height - 1, currentPos.y + dy * 2)),
+      };
+    }
+  }
+
+  if (target === "wall") {
+    // Move closer to nearest wall
+    const distances = [
+      { dir: "top", dist: currentPos.y, pos: { x: currentPos.x, y: 0 } },
+      {
+        dir: "bottom",
+        dist: height - 1 - currentPos.y,
+        pos: { x: currentPos.x, y: height - 1 },
+      },
+      { dir: "left", dist: currentPos.x, pos: { x: 0, y: currentPos.y } },
+      {
+        dir: "right",
+        dist: width - 1 - currentPos.x,
+        pos: { x: width - 1, y: currentPos.y },
+      },
+    ];
+    const nearest = distances.sort((a, b) => a.dist - b.dist)[0];
+    const dx = Math.sign(nearest.pos.x - currentPos.x);
+    const dy = Math.sign(nearest.pos.y - currentPos.y);
+    return {
+      x: Math.max(0, Math.min(width - 1, currentPos.x + dx * 2)),
+      y: Math.max(0, Math.min(height - 1, currentPos.y + dy * 2)),
+    };
+  }
+
+  // Default: random movement within 3 coordinates
+  const randomX = Math.floor(Math.random() * 7) - 3; // -3 to +3
+  const randomY = Math.floor(Math.random() * 7) - 3;
+  return {
+    x: Math.max(0, Math.min(width - 1, currentPos.x + randomX)),
+    y: Math.max(0, Math.min(height - 1, currentPos.y + randomY)),
+  };
+}
+
+/**
+ * Move a player on the grid
+ */
+export function movePlayerOnGrid(
+  gridMap: RoomGridMap,
+  playerName: string,
+  target?: {
+    type: "npc" | "equipment" | "wall" | "coordinate";
+    equipmentName?: string;
+    coordinate?: GridPosition;
+  }
+): RoomGridMap {
+  if (!gridMap.playerPositions) {
+    throw new Error("Player positions not initialized");
+  }
+
+  // Case-insensitive search for player name
+  const playerIndex = gridMap.playerPositions.findIndex(
+    (p) => p.characterName.toLowerCase() === playerName.toLowerCase()
+  );
+
+  if (playerIndex === -1) {
+    throw new Error(
+      `Player "${playerName}" not found on grid. Available players: ${gridMap.playerPositions
+        .map((p) => p.characterName)
+        .join(", ")}`
+    );
+  }
+
+  const currentPos = gridMap.playerPositions[playerIndex].position;
+  let newPosition: GridPosition;
+
+  if (target?.type === "coordinate" && target.coordinate) {
+    // Move to specific coordinate
+    newPosition = target.coordinate;
+  } else if (target?.type && target.type !== "coordinate") {
+    // Calculate position based on target
+    newPosition = calculateTargetPosition(
+      gridMap,
+      currentPos,
+      target.type,
+      target.equipmentName
+    );
+  } else {
+    // Default: random movement
+    newPosition = calculateTargetPosition(gridMap, currentPos, "wall");
+  }
+
+  // Ensure position is within bounds
+  newPosition = {
+    x: Math.max(0, Math.min(gridMap.width - 1, newPosition.x)),
+    y: Math.max(0, Math.min(gridMap.height - 1, newPosition.y)),
+  };
+
+  // Update player position
+  const newPlayerPositions = [...gridMap.playerPositions];
+  newPlayerPositions[playerIndex] = {
+    ...newPlayerPositions[playerIndex],
+    position: newPosition,
+  };
+
+  return {
+    ...gridMap,
+    playerPositions: newPlayerPositions,
+  };
+}

@@ -105,6 +105,11 @@ export type RoomGridMap = {
     equipmentName: string;
     position: GridPosition;
   }>;
+  playerPositions?: Array<{
+    playerId: string;
+    characterName: string;
+    position: GridPosition;
+  }>;
 };
 
 export const RoomPlanSchema = Type.Object({

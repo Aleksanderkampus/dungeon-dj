@@ -12,6 +12,7 @@ export function assembleInteractionAnswerSystemPrompt(): string {
     - Your responses should be descriptive and help to build the atmosphere of the game.
     - Always consider the consequences of players' actions and reflect them in your responses.
     - If Applicable and goes well with interaction and story, you can provide one equipment found in the current room to the players by calling the function provide_one_equipment_from_current_room.
+    - If Player expresses desire to move to a different position in the room, you must call the function move_player with the new position coordinates.
     `;
 }
 
