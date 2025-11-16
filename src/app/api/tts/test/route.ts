@@ -48,14 +48,12 @@ export async function POST(request: NextRequest) {
       }, gameState: ${game.gameState ? "EXISTS" : "EMPTY"}`
     );
 
-    const audioBuffer = await facilitatorAgent(game, isFirstCall ? "" : text);
+    const response = await facilitatorAgent(game, isFirstCall ? "" : text);
 
-    // Return as audio stream
-    return new NextResponse(audioBuffer, {
-      headers: {
-        "Content-Type": "audio/mpeg",
-        "Content-Length": audioBuffer.length.toString(),
-      },
+    // Return JSON with audio (base64) and text
+    return NextResponse.json({
+      audio: response.audio,
+      text: response.text,
     });
   } catch (error) {
     console.error("TTS Error:", error);

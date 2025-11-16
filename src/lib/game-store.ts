@@ -138,8 +138,32 @@ class GameStore {
     };
   }
 
-  getGame(roomCode: string): Game | undefined {
-    return this.games.get(roomCode);
+  async getGame(roomCode: string): Promise<Game | undefined> {
+    const { data, error } = await supabase
+      .from("games")
+      .select("*")
+      .eq("room_code", roomCode)
+      .single();
+
+    const game: Game = {
+      roomCode: data.room_code,
+      status: data.status,
+      players: [],
+      story: data.story,
+      narratorVoiceId: data.narrator_voice_id,
+      worldData: {
+        genre: data.genre,
+        teamBackground: data.team_background,
+        storyGoal: data.story_goal,
+        storyIdea: data.story_idea,
+        facilitatorPersona: "",
+        facilitatorVoice: "",
+        actionsPerSession: data.actions_per_session,
+      },
+      roomData: data.room_data,
+      gameState: data.game_state,
+    };
+    return game;
   }
 
   addPlayer(roomCode: string, player: Player): Game | null {
@@ -329,9 +353,7 @@ class GameStore {
     return game;
   }
 
-  private async ensureSupabaseGameId(
-    roomCode: string
-  ): Promise<number | null> {
+  private async ensureSupabaseGameId(roomCode: string): Promise<number | null> {
     const game = this.games.get(roomCode);
     if (!game) return null;
 

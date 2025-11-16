@@ -39,7 +39,15 @@ const StoryHeadings = Type.Object({
 
 type StoryHeadings = Static<typeof StoryHeadings>;
 
-export async function facilitatorAgent(game: Game, text?: string) {
+export interface FacilitatorResponse {
+  audio: string; // base64 encoded audio
+  text: string; // original text sent to TTS
+}
+
+export async function facilitatorAgent(
+  game: Game,
+  text?: string
+): Promise<FacilitatorResponse> {
   let gameState = game.gameState;
 
   const roomPlan = JSON.parse(game.roomData || "{}") as RoomPlanSchema;
@@ -79,14 +87,15 @@ export async function facilitatorAgent(game: Game, text?: string) {
   }
 
   if (!text) {
-    const [bufferSTream, _] = await Promise.all([
-      createAudioStreamFromText(
-        game.narratorVoiceId,
-        gameState.storySections[currentSection.id].storyPart
-      ),
+    const textToConvert = gameState.storySections[currentSection.id].storyPart;
+    const [audioBuffer, _] = await Promise.all([
+      createAudioStreamFromText(game.narratorVoiceId, textToConvert),
       gameStore.updateGameState(game.roomCode, gameState),
     ]);
-    return bufferSTream;
+    return {
+      audio: audioBuffer.toString("base64"),
+      text: textToConvert,
+    };
   }
 
   const response = await openai.chat.completions.create({
@@ -156,14 +165,17 @@ export async function facilitatorAgent(game: Game, text?: string) {
         nextSection.sectionStatus = "being_narrated";
       }
 
-      const [bufferSTream, _] = await Promise.all([
-        createAudioStreamFromText(
-          game.narratorVoiceId,
-          JSON.parse(toolCalls[0].function.arguments).smooth_transition_message
-        ),
+      const textToConvert = JSON.parse(
+        toolCalls[0].function.arguments
+      ).smooth_transition_message;
+      const [audioBuffer, _] = await Promise.all([
+        createAudioStreamFromText(game.narratorVoiceId, textToConvert),
         gameStore.updateGameState(game.roomCode, gameState),
       ]);
-      return bufferSTream;
+      return {
+        audio: audioBuffer.toString("base64"),
+        text: textToConvert,
+      };
     }
   }
 
@@ -177,12 +189,15 @@ export async function facilitatorAgent(game: Game, text?: string) {
     currentSection.id
   ].interactionsTakenInTheRoom.push(response.choices[0].message);
 
-  const [bufferSTream, _] = await Promise.all([
+  const [audioBuffer, _] = await Promise.all([
     createAudioStreamFromText(game.narratorVoiceId, facilitatorReply),
     gameStore.updateGameState(game.roomCode, game.gameState),
   ]);
 
-  return bufferSTream;
+  return {
+    audio: audioBuffer.toString("base64"),
+    text: facilitatorReply,
+  };
 }
 
 export async function generateHeadings(game: Game): Promise<StoryHeadings> {
