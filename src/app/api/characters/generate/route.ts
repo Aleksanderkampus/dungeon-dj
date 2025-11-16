@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
     }
 
     const normalizedRoomCode = roomCode.toUpperCase();
-    const game = gameStore.getGame(normalizedRoomCode);
+    const game = await gameStore.getGame(normalizedRoomCode);
 
     if (!game) {
       return NextResponse.json(

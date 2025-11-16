@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Game } from "@/types/game";
 import { Button } from "@/components/ui/button";
@@ -57,6 +58,7 @@ export function LobbyView({
   initialGame,
   playerId: initialPlayerId,
 }: LobbyViewProps) {
+  const router = useRouter();
   const [copied, setCopied] = React.useState(false);
   const [playerId, setPlayerId] = React.useState<string | null>(
     initialPlayerId
@@ -73,7 +75,10 @@ export function LobbyView({
     refetchIntervalInBackground: true, // Keep polling even when tab is not focused
   });
 
-  const currentPlayer = game.players.find((p) => p.id === playerId);
+  const players = Array.isArray(game.players) ? game.players : [];
+  const currentPlayer = players.find((p) => p.id === playerId);
+  const allPlayersReady =
+    players.length > 0 && players.every((player) => player.isReady);
 
   // Ready status mutation with optimistic updates
   const readyMutation = useMutation({
@@ -235,7 +240,7 @@ export function LobbyView({
       )}
 
       {/* Player List */}
-      <PlayerList players={game.players} />
+      <PlayerList players={players} />
 
       {/* Character Creation */}
       {playerId && currentPlayer && (
@@ -246,7 +251,7 @@ export function LobbyView({
       )}
 
       {/* Ready Button */}
-      {playerId && currentPlayer && !currentPlayer.isHost && (
+      {playerId && currentPlayer && (
         <div className="flex justify-center">
           <Button
             size="lg"
@@ -260,14 +265,12 @@ export function LobbyView({
         </div>
       )}
 
-      {/* Start Game Button - Only for host when story is ready */}
-      {playerId && currentPlayer?.isHost && game.status === "ready" && (
+      {/* Start Game Button */}
+      {playerId && players.length > 0 && allPlayersReady && (
         <div className="flex justify-center">
           <Button
             size="lg"
-            onClick={() => {
-              window.location.href = `/storytelling/${roomCode}`;
-            }}
+            onClick={() => router.push(`/storytelling/${roomCode}`)}
             className="w-full sm:w-auto"
           >
             Start Game

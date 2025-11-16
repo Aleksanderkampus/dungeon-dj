@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
 
     const normalizedRoomCode = roomCode.toUpperCase();
     console.log("[join] Normalized room code", normalizedRoomCode);
-    const game = gameStore.getGame(normalizedRoomCode);
+    const game = await gameStore.getGame(normalizedRoomCode);
     if (!game) {
       console.warn("[join] Game not found for code", normalizedRoomCode);
       return NextResponse.json({ error: "Game not found" }, { status: 404 });
@@ -36,12 +36,14 @@ export async function POST(req: NextRequest) {
       id: playerId,
       characterName,
       isReady: false,
-      isHost: false,
       characterBackground,
       characterGenerationStatus: "generating" as const,
     };
 
-    const updatedGame = gameStore.addPlayer(normalizedRoomCode, player);
+    const updatedGame = await gameStore.addPlayer(
+      normalizedRoomCode,
+      player
+    );
     console.log("[join] Added player to game", {
       roomCode: normalizedRoomCode,
       playerId,
@@ -81,7 +83,6 @@ async function generateCharacterForPlayer(params: {
     id: string;
     characterName: string;
     isReady: boolean;
-    isHost: boolean;
     characterBackground: string;
   };
   characterBackground: string;
