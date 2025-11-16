@@ -11,7 +11,7 @@ type LobbyPageProps = {
 export default async function LobbyPage({ params }: LobbyPageProps) {
   const { roomCode: rawRoomCode } = await params;
   const roomCode = rawRoomCode.toUpperCase();
-  const game = gameStore.getGame(roomCode);
+  const game = await gameStore.getGame(roomCode);
 
   if (!game) {
     redirect("/");
