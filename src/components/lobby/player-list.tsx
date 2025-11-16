@@ -20,7 +20,8 @@ export function PlayerList({ players = [] }: PlayerListProps) {
       <CardHeader>
         <CardTitle>Players</CardTitle>
         <CardDescription>
-          {players.length} {players.length === 1 ? "player" : "players"} in lobby
+          {players.length} {players.length === 1 ? "player" : "players"} in
+          lobby
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -31,9 +32,6 @@ export function PlayerList({ players = [] }: PlayerListProps) {
               className="flex items-center justify-between rounded-lg border p-3"
             >
               <div className="flex items-center gap-3">
-                {player.isHost && (
-                  <Crown className="h-4 w-4 text-yellow-500" />
-                )}
                 <span className="font-medium">{player.characterName}</span>
               </div>
               <div className="flex items-center gap-2">

@@ -185,7 +185,7 @@ export async function facilitatorAgent(
   game: Game,
   text?: string
 ): Promise<FacilitatorResponse> {
-  let gameState = await assembleGameState(game);
+  const gameState = await assembleGameState(game);
 
   const currentSection = getNarratedSelection(gameState);
 
@@ -322,6 +322,7 @@ export async function createAudioStreamFromText(
   const chunks: Buffer[] = [];
 
   console.log("Starting to read audio stream...", audioStream);
+  // @ts-expect-error - audioStream is a ReadableStream
   for await (const chunk of audioStream) {
     chunks.push(chunk);
   }
