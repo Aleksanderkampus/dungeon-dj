@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Volume2, VolumeX, Play, Pause, Loader2 } from "lucide-react";
 import { useAudioPlayer } from "@/hooks/use-audio-player";
 import { splitIntoSentences } from "@/lib/story-parser";
+import { base64ToAudioBlob } from "@/lib/audio-utils";
+import { SpeechToTextRecorder } from "./speech-to-text-recorder";
 
 type IntroductionViewProps = {
   roomCode: string;
@@ -17,7 +19,6 @@ type TTSResponse = {
   text: string;
 };
 
-// API function to fetch TTS audio and text
 async function fetchTTSAudio(params: {
   roomCode: string;
 }): Promise<TTSResponse> {
@@ -37,26 +38,19 @@ async function fetchTTSAudio(params: {
     throw new Error("Invalid response from TTS API");
   }
 
-  // Decode base64 audio to Blob
-  const audioData = atob(data.audio);
-  const audioArray = new Uint8Array(audioData.length);
-  for (let i = 0; i < audioData.length; i++) {
-    audioArray[i] = audioData.charCodeAt(i);
-  }
-  const audioBlob = new Blob([audioArray], { type: "audio/mpeg" });
-
   return {
-    audioBlob,
+    audioBlob: base64ToAudioBlob(data.audio),
     text: data.text,
   };
 }
 
 export function IntroductionView({ roomCode }: IntroductionViewProps) {
-
   const [currentSentenceIndex, setCurrentSentenceIndex] = React.useState(-1);
   const [isPlaying, setIsPlaying] = React.useState(false);
   const [isMuted, setIsMuted] = React.useState(false);
   const [isComplete, setIsComplete] = React.useState(false);
+  const [narrationText, setNarrationText] = React.useState("");
+  const [audioBlob, setAudioBlob] = React.useState<Blob | null>(null);
 
   // Fetch TTS audio and text with React Query (starts immediately on mount)
   const { data: ttsData, isLoading } = useQuery({
@@ -67,12 +61,20 @@ export function IntroductionView({ roomCode }: IntroductionViewProps) {
     gcTime: 30 * 60 * 1000, // Keep in cache for 30 minutes
   });
 
+  React.useEffect(() => {
+    if (!ttsData) return;
+    setNarrationText(ttsData.text);
+    setAudioBlob(ttsData.audioBlob);
+    setCurrentSentenceIndex(-1);
+    setIsComplete(false);
+    setIsPlaying(false);
+  }, [ttsData]);
+
   // Extract audio blob and split text into sentences
-  const audioBlob = ttsData?.audioBlob;
   const sectionSentences = React.useMemo(() => {
-    if (!ttsData?.text) return [];
-    return splitIntoSentences(ttsData.text);
-  }, [ttsData?.text]);
+    if (!narrationText) return [];
+    return splitIntoSentences(narrationText);
+  }, [narrationText]);
 
   // Initialize audio player
   const audioPlayer = useAudioPlayer({
@@ -142,12 +144,19 @@ export function IntroductionView({ roomCode }: IntroductionViewProps) {
 
       return () => clearTimeout(timer);
     }
-  }, [
-    isPlaying,
-    currentSentenceIndex,
-    sectionSentences.length,
-    audioPlayer.duration,
-  ]);
+  }, [isPlaying, currentSentenceIndex, sectionSentences, audioPlayer.duration]);
+
+  const handleFacilitatorResponse = React.useCallback(
+    (payload: { audioBlob: Blob; text: string }) => {
+      setNarrationText(payload.text);
+      setAudioBlob(payload.audioBlob);
+      setCurrentSentenceIndex(0);
+      setIsComplete(false);
+      setIsPlaying(true);
+      audioPlayer.play(payload.audioBlob);
+    },
+    [audioPlayer]
+  );
 
   return (
     <div className="container mx-auto max-w-4xl space-y-6 p-4">
@@ -224,21 +233,12 @@ export function IntroductionView({ roomCode }: IntroductionViewProps) {
             )}
           </div>
 
-          {/* Completion message */}
           {isComplete && (
-            <div className="mt-6 text-center">
-              <p className="mb-4 text-lg font-medium text-green-600">
-                Introduction Complete!
-              </p>
-              <Button
-                size="lg"
-                onClick={() => {
-                  // TODO: Navigate to next section
-                  console.log("Continue to next section");
-                }}
-              >
-                Continue to Chapter 1
-              </Button>
+            <div className="mt-8">
+              <SpeechToTextRecorder
+                roomCode={roomCode}
+                onResponse={handleFacilitatorResponse}
+              />
             </div>
           )}
         </CardContent>

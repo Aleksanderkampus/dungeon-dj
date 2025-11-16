@@ -90,7 +90,7 @@ async function respond(
     throw new Error("Narrator voice ID is missing in the game data");
   }
 
-  const [audioBuffer, _] = await Promise.all([
+  const [audioBuffer] = await Promise.all([
     createAudioStreamFromText(game.narratorVoiceId, text),
     gameStore.updateGameState(game.roomCode, gameState),
   ]);
@@ -166,7 +166,7 @@ async function provideEquipment(
   }
 
   // Update both game state and room data in database
-  const [audioBuffer, _] = await Promise.all([
+  const [audioBuffer] = await Promise.all([
     createAudioStreamFromText(game.narratorVoiceId, message),
     gameStore.updateGameStateAndRoomData(
       game.roomCode,
@@ -185,7 +185,7 @@ export async function facilitatorAgent(
   game: Game,
   text?: string
 ): Promise<FacilitatorResponse> {
-  let gameState = await assembleGameState(game);
+  const gameState = await assembleGameState(game);
 
   const currentSection = getNarratedSelection(gameState);
 
