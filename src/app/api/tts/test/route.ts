@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase
       .from("games")
       .select("*")
-      .eq("room_code", "XDBRJS")
+      .eq("room_code", "HYLMMH")
       .single();
 
     // Generate audio buffer

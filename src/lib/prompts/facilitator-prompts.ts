@@ -11,6 +11,7 @@ export function assembleInteractionAnswerSystemPrompt(): string {
     - When player chooses to move to the next room, you must call the function finish_current_story_section with a smooth transition message to the next part of the story.
     - Your responses should be descriptive and help to build the atmosphere of the game.
     - Always consider the consequences of players' actions and reflect them in your responses.
+    - If Applicable and goes well with interaction and story, you can provide one equipment found in the current room to the players by calling the function provide_one_equipment_from_current_room.
     `;
 }
 

@@ -35,7 +35,7 @@ export function assembleCharacterUserPrompt({
     facilitatorPersona,
   } = game.worldData;
 
-  const storyContext = game.generatedStory || "";
+  const storyContext = game.story || "";
 
   return `
 <campaign>

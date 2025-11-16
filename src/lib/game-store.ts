@@ -91,6 +91,48 @@ class GameStore {
       .eq("room_code", roomCode);
   }
 
+  async updateRoomData(roomCode: string, roomData: string): Promise<void> {
+    const game = this.games.get(roomCode);
+    if (game) {
+      game.roomData = roomData;
+      this.games.set(roomCode, game);
+    }
+
+    const { error } = await supabase
+      .from("games")
+      .update({ room_data: roomData })
+      .eq("room_code", roomCode);
+
+    if (error) {
+      console.error("Failed to update room data:", error);
+    }
+  }
+
+  async updateGameStateAndRoomData(
+    roomCode: string,
+    gameState: Game["gameState"],
+    roomData: string
+  ): Promise<void> {
+    const game = this.games.get(roomCode);
+    if (game) {
+      game.gameState = gameState;
+      game.roomData = roomData;
+      this.games.set(roomCode, game);
+    }
+
+    const { error } = await supabase
+      .from("games")
+      .update({
+        game_state: gameState,
+        room_data: roomData,
+      })
+      .eq("room_code", roomCode);
+
+    if (error) {
+      console.error("Failed to update game state and room data:", error);
+    }
+  }
+
   async addStoryAndMapToGame(
     roomCode: string,
     aiGeneratedGame: AIGeneratedGame

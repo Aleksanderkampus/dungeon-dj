@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import dotenv from "dotenv";
-import { Game, RoomPlanSchema } from "@/types/game";
+import { Game, GameState, RoomPlanSchema } from "@/types/game";
 import { Static, Type } from "@sinclair/typebox";
 import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 import "dotenv/config";
@@ -13,6 +13,11 @@ import {
   assembleInteractionAnswerUserPrompt,
 } from "../prompts/facilitator-prompts";
 import { gameStore } from "@/lib/game-store";
+import {
+  ChatCompletionMessageFunctionToolCall,
+  ChatCompletionTool,
+} from "openai/resources";
+import { getFacilitatorTools } from "../prompts/tools/get-facilitator-tools";
 
 dotenv.config();
 
@@ -44,10 +49,7 @@ export interface FacilitatorResponse {
   text: string; // original text sent to TTS
 }
 
-export async function facilitatorAgent(
-  game: Game,
-  text?: string
-): Promise<FacilitatorResponse> {
+async function assembleGameState(game: Game) {
   let gameState = game.gameState;
 
   if (!gameState) {
@@ -70,9 +72,122 @@ export async function facilitatorAgent(
     });
   }
 
-  const currentSection = gameState.storySections.find(
+  return gameState;
+}
+
+function getNarratedSelection(gameState: GameState) {
+  return gameState.storySections.find(
     (section) => section.sectionStatus === "being_narrated"
   );
+}
+
+async function respond(
+  game: Game,
+  gameState: GameState,
+  text: string
+): Promise<FacilitatorResponse> {
+  if (!game.narratorVoiceId) {
+    throw new Error("Narrator voice ID is missing in the game data");
+  }
+
+  const [audioBuffer, _] = await Promise.all([
+    createAudioStreamFromText(game.narratorVoiceId, text),
+    gameStore.updateGameState(game.roomCode, gameState),
+  ]);
+
+  return {
+    audio: audioBuffer.toString("base64"),
+    text,
+  };
+}
+
+async function finishCurrentSelection(
+  game: Game,
+  gameState: GameState,
+  currentSectionIndex: number,
+  toolCall: ChatCompletionMessageFunctionToolCall
+): Promise<FacilitatorResponse> {
+  gameState.storySections[currentSectionIndex].interactionsTakenInTheRoom.push({
+    role: "assistant",
+    content: JSON.parse(toolCall.function.arguments).smooth_transition_message,
+  });
+
+  gameState.storySections[currentSectionIndex].sectionStatus = "has_completed";
+
+  const nextSection = gameState.storySections.find(
+    (section) => section.sectionStatus === "pending"
+  );
+
+  if (nextSection) {
+    nextSection.sectionStatus = "being_narrated";
+  }
+
+  const textToConvert = JSON.parse(
+    toolCall.function.arguments
+  ).smooth_transition_message;
+
+  return await respond(game, gameState, textToConvert);
+}
+
+async function provideEquipment(
+  game: Game,
+  gameState: GameState,
+  currentSectionIndex: number,
+  toolCall: ChatCompletionMessageFunctionToolCall
+): Promise<FacilitatorResponse> {
+  const { provided_equipment, message } = JSON.parse(
+    toolCall.function.arguments
+  );
+
+  gameState.storySections[currentSectionIndex].interactionsTakenInTheRoom.push({
+    role: "assistant",
+    content: message,
+  });
+
+  // Parse roomData and remove the provided equipment from current room
+  if (!game.roomData) {
+    throw new Error("Room data is missing in the game data");
+  }
+
+  const roomPlan: RoomPlanSchema = JSON.parse(game.roomData);
+
+  // Remove the provided equipment from the current room's equipment array
+  if (roomPlan.rooms[currentSectionIndex]) {
+    roomPlan.rooms[currentSectionIndex].equipments = roomPlan.rooms[
+      currentSectionIndex
+    ].equipments.filter((equipment) => equipment !== provided_equipment);
+  }
+
+  // Update roomData string
+  const updatedRoomData = JSON.stringify(roomPlan);
+
+  if (!game.narratorVoiceId) {
+    throw new Error("Narrator voice ID is missing in the game data");
+  }
+
+  // Update both game state and room data in database
+  const [audioBuffer, _] = await Promise.all([
+    createAudioStreamFromText(game.narratorVoiceId, message),
+    gameStore.updateGameStateAndRoomData(
+      game.roomCode,
+      gameState,
+      updatedRoomData
+    ),
+  ]);
+
+  return {
+    audio: audioBuffer.toString("base64"),
+    text: message,
+  };
+}
+
+export async function facilitatorAgent(
+  game: Game,
+  text?: string
+): Promise<FacilitatorResponse> {
+  let gameState = await assembleGameState(game);
+
+  const currentSection = getNarratedSelection(gameState);
 
   if (!currentSection) {
     throw new Error("No story section is currently being narrated");
@@ -80,21 +195,15 @@ export async function facilitatorAgent(
 
   console.log("Generated Story Headings:", JSON.stringify(gameState));
 
-  if (!game.narratorVoiceId) {
-    throw new Error("Narrator voice ID is missing in the game data");
-  }
-
   if (!text) {
     const textToConvert = gameState.storySections[currentSection.id].storyPart;
-    const [audioBuffer, _] = await Promise.all([
-      createAudioStreamFromText(game.narratorVoiceId, textToConvert),
-      gameStore.updateGameState(game.roomCode, gameState),
-    ]);
-    return {
-      audio: audioBuffer.toString("base64"),
-      text: textToConvert,
-    };
+    return respond(game, gameState, textToConvert);
   }
+
+  const tools: ChatCompletionTool[] = getFacilitatorTools(
+    game.roomData || "{}",
+    currentSection.id
+  );
 
   const response = await openai.chat.completions.create({
     model: "gpt-4.1-mini",
@@ -109,26 +218,7 @@ export async function facilitatorAgent(
         ),
       },
     ],
-    tools: [
-      {
-        type: "function",
-        function: {
-          name: "finish_current_story_section",
-          description:
-            "Finishes the current story section and moves to the next one",
-          parameters: {
-            type: "object",
-            properties: {
-              smooth_transition_message: {
-                type: "string",
-                description:
-                  "A message that smoothly transitions from the current story section to the next one.",
-              },
-            },
-          },
-        },
-      },
-    ],
+    tools,
   });
 
   console.log("OpenAI RESP", JSON.stringify(response));
@@ -137,65 +227,46 @@ export async function facilitatorAgent(
     throw new Error("No Response received from OpenAI");
   }
 
+  const messageContent = response.choices[0].message.content;
   const toolCalls = response.choices[0].message.tool_calls;
 
-  if (toolCalls) {
-    if (
-      toolCalls[0].type === "function" &&
-      toolCalls[0].function.name === "finish_current_story_section"
-    ) {
-      game.gameState?.storySections[
-        currentSection.id
-      ].interactionsTakenInTheRoom.push({
-        role: "assistant",
-        content: JSON.parse(toolCalls[0].function.arguments)
-          .smooth_transition_message,
-      });
+  if (messageContent && !toolCalls) {
+    gameState.storySections[currentSection.id].interactionsTakenInTheRoom.push(
+      response.choices[0].message
+    );
 
-      game.gameState!.storySections[currentSection.id].sectionStatus =
-        "has_completed";
+    return await respond(game, gameState, messageContent);
+  }
 
-      const nextSection = game.gameState!.storySections.find(
-        (section) => section.sectionStatus === "pending"
+  if (!toolCalls) {
+    throw new Error("No tool calls received from OpenAI");
+  }
+
+  if (toolCalls[0].type !== "function") {
+    throw new Error("Unsupported tool call type received from OpenAI");
+  }
+
+  switch (toolCalls[0].function.name) {
+    case "finish_current_story_section":
+      return await finishCurrentSelection(
+        game,
+        gameState,
+        currentSection.id,
+        toolCalls[0]
+      );
+    case "provide_one_equipment_from_current_room":
+      return await provideEquipment(
+        game,
+        gameState,
+        currentSection.id,
+        toolCalls[0]
       );
 
-      if (nextSection) {
-        nextSection.sectionStatus = "being_narrated";
-      }
-
-      const textToConvert = JSON.parse(
-        toolCalls[0].function.arguments
-      ).smooth_transition_message;
-      const [audioBuffer, _] = await Promise.all([
-        createAudioStreamFromText(game.narratorVoiceId, textToConvert),
-        gameStore.updateGameState(game.roomCode, gameState),
-      ]);
-      return {
-        audio: audioBuffer.toString("base64"),
-        text: textToConvert,
-      };
-    }
+    default:
+      break;
   }
 
-  if (!response.choices[0].message.content) {
-    throw new Error("No content received from OpenAI");
-  }
-
-  const facilitatorReply = response.choices[0].message.content;
-
-  game.gameState?.storySections[
-    currentSection.id
-  ].interactionsTakenInTheRoom.push(response.choices[0].message);
-
-  const [audioBuffer, _] = await Promise.all([
-    createAudioStreamFromText(game.narratorVoiceId, facilitatorReply),
-    gameStore.updateGameState(game.roomCode, game.gameState),
-  ]);
-
-  return {
-    audio: audioBuffer.toString("base64"),
-    text: facilitatorReply,
-  };
+  throw new Error("Unsupported tool call received from OpenAI");
 }
 
 export async function generateHeadings(game: Game): Promise<StoryHeadings> {
