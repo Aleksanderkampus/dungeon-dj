@@ -89,7 +89,7 @@ async function generateCharacterForPlayer(params: {
   const { roomCode, playerId, characterBackground } = params;
 
   try {
-    const enrichedGame = gameStore.getGame(roomCode);
+    const enrichedGame = await gameStore.getGame(roomCode);
     if (!enrichedGame) {
       throw new Error("Game state missing after adding player");
     }
