@@ -12,9 +12,13 @@ Rules:
     `;
 }
 
-export function assembleNarratorUserVoicePrompt(story: string): string {
+export function assembleNarratorUserVoicePrompt(
+  story: string,
+  facilitatorPersona: string
+): string {
   return `
        <game-story>${story}</game-story>
+       <facilitator-persona>${facilitatorPersona}</facilitator-persona>
 
     `;
 }

@@ -11,6 +11,7 @@ Rules
 - You must create the storyline based on the provided instructions from a creator.
 - You must create storyline and set the scene in the proper Genre provided by the creator.
 - Your generated story must be in-line with the provided Team Background.
+- The provided Facilitator Persona must have an effect on the tone and style of the story you generate.
 - Your story must resolve around completing the provided goal
 - You will also get some short description and introduction to the story by the creator of the game around which you need to create the story.
 - Story must include the provided amount of actions. Actions may include different battles or challenges that team must resolve.
@@ -49,9 +50,15 @@ Monster and Battle Rules:
     `;
 }
 
-export function assembleStoryUserPrompt(worldData: Game): string {
-  const { genre, teamBackground, storyGoal, storyIdea, actionsPerSession } =
-    worldData.worldData;
+export function assembleStoryUserPrompt(game: Game): string {
+  const {
+    genre,
+    teamBackground,
+    storyGoal,
+    storyIdea,
+    actionsPerSession,
+    facilitatorPersona,
+  } = game.worldData;
 
   return `
     
@@ -61,5 +68,6 @@ export function assembleStoryUserPrompt(worldData: Game): string {
 
 <story-idea>${storyIdea}</story-idea>
 <actions-per-session>${actionsPerSession}</actions-per-session>
+<facilitator-persona>${facilitatorPersona}</facilitator-persona>
     `;
 }
