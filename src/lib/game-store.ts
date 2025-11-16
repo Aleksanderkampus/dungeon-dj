@@ -66,6 +66,7 @@ class GameStore {
         story_goal: worldData.storyGoal,
         story_idea: worldData.storyIdea,
         actions_per_session: worldData.actionsPerSession,
+        facilitator_persona: worldData.facilitatorPersona,
       })
       .select("id")
       .single();
@@ -154,6 +155,7 @@ class GameStore {
       story_goal: currentGame.worldData.storyGoal,
       story_idea: currentGame.worldData.storyIdea,
       actions_per_session: currentGame.worldData.actionsPerSession,
+      facilitator_persona: currentGame.worldData.facilitatorPersona,
       story,
       narrator_voice_id: narratorVoice.voiceId,
       room_data: JSON.stringify(map),
@@ -164,6 +166,10 @@ class GameStore {
       story,
       narratorVoiceId: narratorVoice.voiceId,
       roomData: JSON.stringify(map),
+      worldData: {
+        ...currentGame.worldData,
+        facilitatorVoice: narratorVoice.voiceId,
+      },
     });
 
     const { error } = await supabase
@@ -178,6 +184,10 @@ class GameStore {
       story,
       narratorVoiceId: narratorVoice.voiceId,
       roomData: JSON.stringify(map),
+      worldData: {
+        ...currentGame.worldData,
+        facilitatorVoice: narratorVoice.voiceId,
+      },
     };
   }
 
@@ -228,7 +238,7 @@ class GameStore {
         storyGoal: data.story_goal,
         storyIdea: data.story_idea,
         facilitatorPersona: data.facilitator_persona ?? "",
-        facilitatorVoice: data.facilitator_voice ?? "",
+        facilitatorVoice: data.narrator_voice_id ?? "",
         actionsPerSession: data.actions_per_session,
       },
       roomData: data.room_data,

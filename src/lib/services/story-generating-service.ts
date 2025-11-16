@@ -25,14 +25,15 @@ const openai = new OpenAI({
 
 const elevenlabs = new ElevenLabsClient();
 
-export async function setTheGameScene(
-  worldData: Game
-): Promise<AIGeneratedGame> {
-  const generatedGameStory = await generateGameStory(worldData);
+export async function setTheGameScene(game: Game): Promise<AIGeneratedGame> {
+  const generatedGameStory = await generateGameStory(game);
 
   const [gameMap, narratorVoiceId] = await Promise.all([
     generateGameMap(generatedGameStory),
-    generateNarratorVoiceDescription(generatedGameStory),
+    generateNarratorVoiceDescription(
+      generatedGameStory,
+      game.worldData.facilitatorPersona
+    ),
   ]);
 
   // Generate 9x9 grid maps for each room with NPCs and equipment positioned
@@ -49,9 +50,9 @@ export async function setTheGameScene(
   };
 }
 
-export async function generateGameStory(worldData: Game): Promise<string> {
+export async function generateGameStory(game: Game): Promise<string> {
   const storySystemMessage = assembleStorySystemPrompt();
-  const storyUserMessage = assembleStoryUserPrompt(worldData);
+  const storyUserMessage = assembleStoryUserPrompt(game);
 
   const completion = await openai.chat.completions.create({
     model: "gpt-4.1-mini",
@@ -94,10 +95,14 @@ export async function generateGameMap(story: string): Promise<RoomPlanSchema> {
 }
 
 export async function generateNarratorVoiceDescription(
-  story: string
+  story: string,
+  facilitatorPersona: string
 ): Promise<string> {
   const narratorSystemVoicePrompt = assembleNarratorSystemVoicePrompt();
-  const narratorUserVoicePrompt = assembleNarratorUserVoicePrompt(story);
+  const narratorUserVoicePrompt = assembleNarratorUserVoicePrompt(
+    story,
+    facilitatorPersona
+  );
 
   const completion = await openai.chat.completions.create({
     model: "gpt-4.1-mini",
@@ -112,7 +117,7 @@ export async function generateNarratorVoiceDescription(
   const { previews } = await elevenlabs.textToVoice.design({
     modelId: "eleven_multilingual_ttv_v2",
     voiceDescription,
-    text: "My mouth is so big. I would need to fill it. If there would be someone who would help me, scratch my throat.",
+    text: facilitatorPersona || story,
   });
 
   const firstPreview = previews[0];

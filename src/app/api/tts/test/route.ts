@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
         storyGoal: data?.story_goal || "",
         storyIdea: data?.story_idea || "",
         facilitatorPersona: data?.facilitator_persona || "",
-        facilitatorVoice: data?.facilitator_voice || "",
+        facilitatorVoice: data?.narrator_voice_id || "",
         actionsPerSession: data?.actions_per_session || "",
       },
       // If isFirstCall is true, set gameState to empty to trigger new heading generation
