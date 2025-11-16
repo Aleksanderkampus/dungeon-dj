@@ -83,6 +83,30 @@ export type Game = {
   supabaseId?: number;
 };
 
+export type GridPosition = {
+  x: number;
+  y: number;
+};
+
+export type GridCell = {
+  type: "empty" | "npc" | "player" | "equipment";
+  npcName?: string;
+  equipmentName?: string;
+  playerId?: string;
+};
+
+export type RoomGridMap = {
+  width: 9;
+  height: 9;
+  cells: GridCell[][];
+  playerSpawnPosition: GridPosition;
+  npcPosition: GridPosition;
+  equipmentPositions: Array<{
+    equipmentName: string;
+    position: GridPosition;
+  }>;
+};
+
 export const RoomPlanSchema = Type.Object({
   rooms: Type.Array(
     Type.Object({
@@ -116,7 +140,20 @@ export const RoomPlanSchema = Type.Object({
   ),
 });
 
-export type RoomPlanSchema = Static<typeof RoomPlanSchema>;
+export type Room = {
+  npc: {
+    npcName: string;
+    npcType: "bad" | "neutral" | "good";
+    damage: number;
+  };
+  roomDescription: string;
+  equipments: string[];
+  gridMap?: RoomGridMap;
+};
+
+export type RoomPlanSchema = {
+  rooms: Room[];
+};
 
 export type AIGeneratedGame = {
   story: string;

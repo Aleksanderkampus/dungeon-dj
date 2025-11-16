@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Volume2, VolumeX, Play, Pause, Loader2 } from "lucide-react";
 import { useAudioPlayer } from "@/hooks/use-audio-player";
 import { splitIntoSentences } from "@/lib/story-parser";
+import { GridMapVisualization } from "@/components/grid-map/grid-map-visualization";
 import { base64ToAudioBlob } from "@/lib/audio-utils";
 import { SpeechToTextRecorder } from "./speech-to-text-recorder";
 
@@ -17,6 +18,8 @@ type IntroductionViewProps = {
 type TTSResponse = {
   audioBlob: Blob;
   text: string;
+  currentRoom?: any;
+  currentSectionId?: number;
 };
 
 async function fetchTTSAudio(params: {
@@ -41,6 +44,8 @@ async function fetchTTSAudio(params: {
   return {
     audioBlob: base64ToAudioBlob(data.audio),
     text: data.text,
+    currentRoom: data.currentRoom,
+    currentSectionId: data.currentSectionId,
   };
 }
 
@@ -51,6 +56,8 @@ export function IntroductionView({ roomCode }: IntroductionViewProps) {
   const [isComplete, setIsComplete] = React.useState(false);
   const [narrationText, setNarrationText] = React.useState("");
   const [audioBlob, setAudioBlob] = React.useState<Blob | null>(null);
+  const [currentRoom, setCurrentRoom] = React.useState<any>(null);
+  const [currentSectionId, setCurrentSectionId] = React.useState<number>(0);
 
   // Fetch TTS audio and text with React Query (starts immediately on mount)
   const { data: ttsData, isLoading } = useQuery({
@@ -65,9 +72,13 @@ export function IntroductionView({ roomCode }: IntroductionViewProps) {
     if (!ttsData) return;
     setNarrationText(ttsData.text);
     setAudioBlob(ttsData.audioBlob);
+    setCurrentRoom(ttsData.currentRoom);
+    setCurrentSectionId(ttsData.currentSectionId ?? 0);
     setCurrentSentenceIndex(-1);
     setIsComplete(false);
     setIsPlaying(false);
+    console.log("🗺️ TTS Data loaded - Section:", ttsData.currentSectionId);
+    console.log("Room:", ttsData.currentRoom);
   }, [ttsData]);
 
   // Extract audio blob and split text into sentences
@@ -147,9 +158,22 @@ export function IntroductionView({ roomCode }: IntroductionViewProps) {
   }, [isPlaying, currentSentenceIndex, sectionSentences, audioPlayer.duration]);
 
   const handleFacilitatorResponse = React.useCallback(
-    (payload: { audioBlob: Blob; text: string }) => {
+    (payload: {
+      audioBlob: Blob;
+      text: string;
+      currentRoom?: any;
+      currentSectionId?: number;
+    }) => {
       setNarrationText(payload.text);
       setAudioBlob(payload.audioBlob);
+      if (payload.currentRoom) {
+        setCurrentRoom(payload.currentRoom);
+        setCurrentSectionId(payload.currentSectionId ?? 0);
+        console.log(
+          "🗺️ Room updated via response - Section:",
+          payload.currentSectionId
+        );
+      }
       setCurrentSentenceIndex(0);
       setIsComplete(false);
       setIsPlaying(true);
@@ -159,39 +183,66 @@ export function IntroductionView({ roomCode }: IntroductionViewProps) {
   );
 
   return (
-    <div className="container mx-auto max-w-4xl space-y-6 p-4">
+    <div className="container mx-auto max-w-7xl space-y-6 p-4">
       <Card>
         <CardContent className="p-8">
-          <div className="mb-8">
-            <h2 className="mb-4 text-2xl font-bold">Introduction</h2>
+          <h2 className="mb-6 text-2xl font-bold">Introduction</h2>
 
-            {/* Story text display */}
-            <div className="min-h-[200px] space-y-2 text-lg leading-relaxed">
-              {currentSentenceIndex === -1 ? (
-                <p className="text-muted-foreground italic">
-                  Press start to begin the adventure...
-                </p>
+          {/* Two-column layout: Story text + Grid map */}
+          <div className="grid gap-8 lg:grid-cols-2">
+            {/* Left column: Story text */}
+            <div className="space-y-4">
+              {/* Story text display */}
+              <div className="min-h-[300px] space-y-2 text-lg leading-relaxed">
+                {currentSentenceIndex === -1 ? (
+                  <p className="text-muted-foreground italic">
+                    Press start to begin the adventure...
+                  </p>
+                ) : (
+                  sectionSentences
+                    .slice(0, currentSentenceIndex + 1)
+                    .map((sentence, idx) => (
+                      <span
+                        key={idx}
+                        className={
+                          idx === currentSentenceIndex
+                            ? "animate-in fade-in duration-300 font-medium"
+                            : "text-muted-foreground"
+                        }
+                      >
+                        {sentence}{" "}
+                      </span>
+                    ))
+                )}
+              </div>
+            </div>
+
+            {/* Right column: Grid map */}
+            <div className="flex items-start">
+              {!isLoading && currentRoom?.gridMap ? (
+                <div
+                  key={currentSectionId}
+                  className="w-full animate-in fade-in duration-500"
+                >
+                  <GridMapVisualization
+                    gridMap={currentRoom.gridMap}
+                    className="w-full"
+                  />
+                </div>
               ) : (
-                sectionSentences
-                  .slice(0, currentSentenceIndex + 1)
-                  .map((sentence, idx) => (
-                    <span
-                      key={idx}
-                      className={
-                        idx === currentSentenceIndex
-                          ? "animate-in fade-in duration-300 font-medium"
-                          : "text-muted-foreground"
-                      }
-                    >
-                      {sentence}{" "}
-                    </span>
-                  ))
+                <div className="flex h-full w-full items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/20 p-8">
+                  <p className="text-center text-sm text-muted-foreground">
+                    {isLoading
+                      ? "Loading room map..."
+                      : "No room map available"}
+                  </p>
+                </div>
               )}
             </div>
           </div>
 
           {/* Controls */}
-          <div className="flex items-center justify-center gap-4">
+          <div className="mt-8 flex items-center justify-center gap-4">
             {currentSentenceIndex === -1 ? (
               <Button size="lg" onClick={handleStart} disabled={isLoading}>
                 {isLoading ? (

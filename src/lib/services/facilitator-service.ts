@@ -47,6 +47,8 @@ type StoryHeadings = Static<typeof StoryHeadings>;
 export interface FacilitatorResponse {
   audio: string; // base64 encoded audio
   text: string; // original text sent to TTS
+  currentRoom?: any; // current room map data
+  currentSectionId?: number; // current section ID being narrated
 }
 
 async function assembleGameState(game: Game) {
@@ -90,6 +92,19 @@ async function respond(
     throw new Error("Narrator voice ID is missing in the game data");
   }
 
+  // Get current room data
+  const currentSection = getNarratedSelection(gameState);
+  let currentRoom = null;
+
+  if (currentSection && game.roomData) {
+    try {
+      const roomPlan: RoomPlanSchema = JSON.parse(game.roomData);
+      currentRoom = roomPlan.rooms[currentSection.id];
+    } catch (error) {
+      console.error("Error parsing room data in respond:", error);
+    }
+  }
+
   const [audioBuffer] = await Promise.all([
     createAudioStreamFromText(game.narratorVoiceId, text),
     gameStore.updateGameState(game.roomCode, gameState),
@@ -98,6 +113,8 @@ async function respond(
   return {
     audio: audioBuffer.toString("base64"),
     text,
+    currentRoom,
+    currentSectionId: currentSection?.id,
   };
 }
 
@@ -165,6 +182,21 @@ async function provideEquipment(
     throw new Error("Narrator voice ID is missing in the game data");
   }
 
+  // Get current room data after equipment update
+  const currentSection = gameState.storySections.find(
+    (section) => section.sectionStatus === "being_narrated"
+  );
+
+  let currentRoom = null;
+  if (currentSection) {
+    try {
+      const updatedRoomPlan: RoomPlanSchema = JSON.parse(updatedRoomData);
+      currentRoom = updatedRoomPlan.rooms[currentSection.id];
+    } catch (error) {
+      console.error("Error parsing updated room data:", error);
+    }
+  }
+
   // Update both game state and room data in database
   const [audioBuffer] = await Promise.all([
     createAudioStreamFromText(game.narratorVoiceId, message),
@@ -178,6 +210,8 @@ async function provideEquipment(
   return {
     audio: audioBuffer.toString("base64"),
     text: message,
+    currentRoom,
+    currentSectionId: currentSection?.id,
   };
 }
 

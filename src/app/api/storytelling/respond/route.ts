@@ -28,6 +28,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       audio: response.audio,
       text: response.text,
+      currentRoom: response.currentRoom,
+      currentSectionId: response.currentSectionId,
     });
   } catch (error) {
     console.error("[storytelling/respond] Error:", error);

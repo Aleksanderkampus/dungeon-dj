@@ -25,10 +25,12 @@ export async function POST(req: NextRequest) {
     // Pass undefined as second parameter to trigger first call (introduction)
     const response = await facilitatorAgent(game);
 
-    // Return JSON with base64 audio and text
+    // Return JSON with base64 audio, text, and current room data
     return NextResponse.json({
       audio: response.audio,
       text: response.text,
+      currentRoom: response.currentRoom,
+      currentSectionId: response.currentSectionId,
     });
   } catch (error) {
     console.error("Error in TTS endpoint:", error);

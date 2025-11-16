@@ -208,10 +208,7 @@ class GameStore {
     }
 
     const players: Player[] = (playerRows ?? []).map((row) => ({
-      id:
-        row.player_id?.toString?.() ??
-        row.id?.toString?.() ??
-        randomUUID(),
+      id: row.player_id?.toString?.() ?? row.id?.toString?.() ?? randomUUID(),
       characterName: row.character_name ?? row.name ?? "Unknown Adventurer",
       isReady: Boolean(row.is_ready),
       characterBackground: row.backstory ?? "",
@@ -240,6 +237,7 @@ class GameStore {
     };
 
     this.games.set(roomCode, game);
+
     return game;
   }
 
