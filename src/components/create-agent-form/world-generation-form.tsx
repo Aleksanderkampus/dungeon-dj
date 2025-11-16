@@ -50,7 +50,6 @@ const formSchema = z.object({
     .string()
     .min(10, "Facilitator persona must be at least 10 characters")
     .max(500, "Facilitator persona must be at most 500 characters"),
-  facilitatorVoice: z.string().min(1, "Please select a voice"),
   actionsPerSession: z.string().min(1, "Please select actions per session"),
 });
 
@@ -72,9 +71,8 @@ const STEPS = [
     title: "Facilitator Persona",
     description: "Define the facilitator's character",
   },
-  { id: 6, title: "Facilitator Voice", description: "Choose the voice style" },
   {
-    id: 7,
+    id: 6,
     title: "Session Settings",
     description: "Configure gameplay parameters",
   },
@@ -125,8 +123,7 @@ export function WorldGenerationForm() {
     3: "storyGoal",
     4: "storyIdea",
     5: "facilitatorPersona",
-    6: "facilitatorVoice",
-    7: "actionsPerSession",
+    6: "actionsPerSession",
   };
 
   const form = useForm({
@@ -136,7 +133,6 @@ export function WorldGenerationForm() {
       storyGoal: "",
       storyIdea: "",
       facilitatorPersona: "",
-      facilitatorVoice: "",
       actionsPerSession: "",
     },
     validators: {
@@ -375,66 +371,8 @@ export function WorldGenerationForm() {
               </form.Field>
             )}
 
-            {/* Step 6: Facilitator Voice */}
+            {/* Step 6: Actions Per Session */}
             {currentStep === 6 && (
-              <form.Field name="facilitatorVoice">
-                {(field) => {
-                  const isInvalid =
-                    field.state.meta.isTouched && !field.state.meta.isValid;
-                  return (
-                    <Field data-invalid={isInvalid}>
-                      <FieldLabel htmlFor={field.name}>
-                        Voice of the Facilitator
-                      </FieldLabel>
-                      <Select
-                        value={field.state.value}
-                        onValueChange={field.handleChange}
-                      >
-                        <SelectTrigger id={field.name} aria-invalid={isInvalid}>
-                          <SelectValue placeholder="Select a voice..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="adam">
-                            Adam - Deep & Authoritative
-                          </SelectItem>
-                          <SelectItem value="bella">
-                            Bella - Warm & Friendly
-                          </SelectItem>
-                          <SelectItem value="charlie">
-                            Charlie - British & Sophisticated
-                          </SelectItem>
-                          <SelectItem value="daniel">
-                            Daniel - Professional & Clear
-                          </SelectItem>
-                          <SelectItem value="emily">
-                            Emily - Energetic & Youthful
-                          </SelectItem>
-                          <SelectItem value="george">
-                            George - Mature & Wise
-                          </SelectItem>
-                          <SelectItem value="jessica">
-                            Jessica - Confident & Dynamic
-                          </SelectItem>
-                          <SelectItem value="thomas">
-                            Thomas - Calm & Narrative
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FieldDescription>
-                        Choose the ElevenLabs voice that will narrate your
-                        adventure
-                      </FieldDescription>
-                      {isInvalid && (
-                        <FieldError errors={field.state.meta.errors} />
-                      )}
-                    </Field>
-                  );
-                }}
-              </form.Field>
-            )}
-
-            {/* Step 7: Actions Per Session */}
-            {currentStep === 7 && (
               <form.Field name="actionsPerSession">
                 {(field) => {
                   const isInvalid =
