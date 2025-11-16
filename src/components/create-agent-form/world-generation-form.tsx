@@ -281,7 +281,7 @@ export function WorldGenerationForm() {
                         value={field.state.value}
                         onBlur={field.handleBlur}
                         onChange={(e) => field.handleChange(e.target.value)}
-                        placeholder="There is a gorgeous Latina princess stuck in a tower that is protected by a dragon..."
+                        placeholder="There is a gorgeous princess stuck in a tower that is protected by a dragon..."
                         rows={8}
                         className="min-h-32 resize-none"
                         aria-invalid={isInvalid}
